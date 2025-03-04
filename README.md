@@ -1,4 +1,4 @@
-# Attrition Extended
+# Better AI Pilots
 
 [Discord Server](https://discord.gg/9wcEdgRyrs)
 
