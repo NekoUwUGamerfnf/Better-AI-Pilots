@@ -1,7 +1,0 @@
-{
-	"Name" : "Neko's Better AI Pilots",
-	"Description" : "Give AI Pilots Titans",
-	"Version": "1.0.0",
-	"LoadPriority": 20,
-	"RequiredOnClient": false,
-}
