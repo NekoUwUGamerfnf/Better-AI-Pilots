@@ -183,12 +183,12 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 		return
 
 	entity soul = ent.GetTitanSoul()
-	entity titanSoul = attacker.GetTitanSoul()
-	if( attacker.IsNPC() && attacker.IsTitan() && titanSoul.soul.seatedNpcPilot.isValid && !TitanCoreInUse( attacker ) )
+	if( attacker.IsNPC() && attacker.IsTitan() )
 	{
 		if( IsValid( soul ) && ( damageType & DF_MELEE || damageSourceID == eDamageSourceId.auto_titan_melee ) )
 		{
-			if( !GetDoomedState( attacker ) ) //Doomed Elites cannot execute I Mean Doomed Titans Cannot Execute
+		    entity titanSoul = attacker.GetTitanSoul()
+			if( !GetDoomedState( attacker ) && titanSoul.soul.seatedNpcPilot.isValid && !TitanCoreInUse( attacker ) ) //Doomed Elites cannot execute I Mean Doomed Titans Cannot Execute
 			{
 				//If the player is already doomed, then just execute, if the next melee damage brings it to Doom state, wait to execute
 				if( GetDoomedState( ent ) && ( !SoulHasPassive( soul, ePassives.PAS_RONIN_AUTOSHIFT ) || !SoulHasPassive( soul, ePassives.PAS_AUTO_EJECT ) || !ent.IsPhaseShifted() ) )
