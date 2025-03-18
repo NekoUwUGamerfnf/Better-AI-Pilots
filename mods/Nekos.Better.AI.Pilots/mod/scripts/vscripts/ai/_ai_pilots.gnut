@@ -57,6 +57,8 @@ function AiPilots_Init()
 	RegisterSignal( "StopCallTitanThink" )
 	RegisterSignal( "NpcTitanRespawnAvailableUpdated" )
 	AddSpawnCallback( "npc_pilot_elite", CaptainThink )
+	AddDamageFinalCallback( "player", PilotTitanExecution )
+	AddDamageFinalCallback( "npc_titan", PilotTitanExecution ) // titan execution :D
 
 	level.onNpcPilotBecomesTitanCallbacks	<- []
 	level.onNpcTitanBecomesPilotCallbacks	<- []
@@ -166,6 +168,40 @@ void function threadCaptainThink( entity npc )
 	thread NpcPilotCallTitanThink( npc )
 }
 
+void function PilotTitanExecution( entity ent, var damageInfo )
+{
+thread PilotTitanExecution_thread( ent, damageInfo )
+}
+
+void function PilotTitanExecution_thread( entity ent, var damageInfo )
+{
+    int damageType = DamageInfo_GetCustomDamageType( damageInfo )
+	int damageSourceID = DamageInfo_GetDamageSourceIdentifier( damageInfo )
+	entity attacker = DamageInfo_GetAttacker( damageInfo )
+
+		if ( !IsAlive( ent ) || !attacker || ent.GetTeam() == attacker.GetTeam() || attacker == ent || !ent.IsTitan() )
+		return
+
+	entity soul = ent.GetTitanSoul()
+	entity titanSoul = attacker.GetTitanSoul()
+	if( attacker.IsNPC() && attacker.IsTitan() && titanSoul.soul.seatedNpcPilot.isValid && !TitanCoreInUse( attacker ) )
+	{
+		if( IsValid( soul ) && ( damageType & DF_MELEE || damageSourceID == eDamageSourceId.auto_titan_melee ) )
+		{
+			if( !GetDoomedState( attacker ) ) //Doomed Elites cannot execute I Mean Doomed Titans Cannot Execute
+			{
+				//If the player is already doomed, then just execute, if the next melee damage brings it to Doom state, wait to execute
+				if( GetDoomedState( ent ) && ( !SoulHasPassive( soul, ePassives.PAS_RONIN_AUTOSHIFT ) || !SoulHasPassive( soul, ePassives.PAS_AUTO_EJECT ) || !ent.IsPhaseShifted() ) )
+				{
+					thread NPCTriesSyncedMeleeVsPlayer( attacker, ent )
+					ent.SetNoTarget( true ) //Prevents other nearby AI Titans from Moshing the victim
+				}
+				//else
+					//thread EliteExecutionDelayed( attacker, ent ) //Execute in next frame No
+			}
+		}
+	}
+}
 
 function NpcPilotCallTitanThink( entity pilot )
 {
@@ -360,9 +396,9 @@ entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles
 	int randomtitancamo = RandomIntRange( 0, 160 ) // 159 is all camos
 	titan.SetSkin( 2 ) // titan skin has skinIndex of 2
 	titan.SetCamo( randomtitancamo ) // set camo to random
-	thread AntiEliteTitanExecution( titan )
+	//thread AntiEliteTitanExecution( titan )
 	thread AutoTitanLoadout( titan )
-	thread EjectWhenDoomed( titan )
+	//thread EjectWhenDoomed( titan )
 	//thread __TitanKneelOrStandAfterDropin( titan, pilot )
 
 	//get the titan ready to be embarked
@@ -382,7 +418,7 @@ GivePassive( soul, ePassives.PAS_RONIN_AUTOSHIFT )
 void function RandomPilotWeapon( entity pilot )
 {
 TakeWeaponsForArray( pilot, pilot.GetMainWeapons() )
-int randompilotweapon = RandomIntRange( 0, 18 )
+int randompilotweapon = RandomIntRange( 0, 17 )
 if ( randompilotweapon == 0 )
 pilot.GiveWeapon( "mp_weapon_rspn101_og" )
 if ( randompilotweapon == 1 )
@@ -396,7 +432,7 @@ pilot.GiveWeapon( "mp_weapon_epg" )
 if ( randompilotweapon == 5 )
 pilot.GiveWeapon( "mp_weapon_smr" )
 if ( randompilotweapon == 6 )
-pilot.GiveWeapon( "mp_weapon_softball" )
+pilot.GiveWeapon( "mp_weapon_lmg" )
 if ( randompilotweapon == 7 )
 pilot.GiveWeapon( "mp_weapon_sniper" )
 if ( randompilotweapon == 8 )
@@ -417,8 +453,6 @@ if ( randompilotweapon == 15 )
 pilot.GiveWeapon( "mp_weapon_doubletake" )
 if ( randompilotweapon == 16 )
 pilot.GiveWeapon( "mp_weapon_shotgun" )
-if ( randompilotweapon == 17 )
-pilot.GiveWeapon( "mp_weapon_lmg" )
 }
 
 void function RandomPilotModel( entity pilot )
@@ -502,6 +536,8 @@ void function PilotInTitanSet( entity titan )
 {
     if( IsValid( titan ) )
 	{
+	thread AntiEliteTitanExecution( titan )
+	thread EjectWhenDoomed( titan )
 	string attackerType = GetTitanCharacterName( titan )
 	switch ( attackerType )
 	    {
@@ -590,6 +626,11 @@ void function AutoTitanLoadout( entity titan )
 						titan.GiveOffhandWeapon( "mp_titanability_phase_dash", OFFHAND_ANTIRODEO )
 						titan.GiveOffhandWeapon( "mp_ability_swordblock", OFFHAND_SPECIAL )
 						titan.GiveOffhandWeapon( "melee_titan_sword", OFFHAND_MELEE )
+						entity soul = titan.GetTitanSoul()
+						if( IsValid( soul ) )
+						{
+						soul.soul.titanLoadout.titanExecution = "execution_random_3"
+						}
                         break;
 		case "scorch":
 		                titan.GiveWeapon( "mp_titanweapon_meteor" )
@@ -597,6 +638,11 @@ void function AutoTitanLoadout( entity titan )
 						titan.GiveOffhandWeapon( "mp_titancore_flame_wave", OFFHAND_EQUIPMENT )
 						titan.GiveOffhandWeapon( "mp_titanability_slow_trap", OFFHAND_ANTIRODEO )
 						titan.GiveOffhandWeapon( "mp_titanweapon_heat_shield", OFFHAND_SPECIAL )
+						entity soul = titan.GetTitanSoul()
+						if( IsValid( soul ) )
+						{
+						soul.soul.titanLoadout.titanExecution = "execution_random_1"
+						}
                         break;
 		case "legion":
 		                titan.GiveWeapon( "mp_titanweapon_predator_cannon" )
@@ -604,6 +650,11 @@ void function AutoTitanLoadout( entity titan )
 						titan.GiveOffhandWeapon( "mp_titancore_siege_mode", OFFHAND_EQUIPMENT )
 						titan.GiveOffhandWeapon( "mp_titanability_ammo_swap", OFFHAND_ANTIRODEO )
 						titan.GiveOffhandWeapon( "mp_titanability_gun_shield", OFFHAND_SPECIAL )
+						entity soul = titan.GetTitanSoul()
+						if( IsValid( soul ) )
+						{
+						soul.soul.titanLoadout.titanExecution = "execution_random_5"
+						}
 			            break;
 		case "ion":
 		                titan.GiveWeapon( "mp_titanweapon_particle_accelerator" )
@@ -611,6 +662,11 @@ void function AutoTitanLoadout( entity titan )
 						titan.GiveOffhandWeapon( "mp_titancore_laser_cannon", OFFHAND_EQUIPMENT )
 						titan.GiveOffhandWeapon( "mp_titanability_laser_trip", OFFHAND_ANTIRODEO )
 						titan.GiveOffhandWeapon( "mp_titanweapon_vortex_shield", OFFHAND_SPECIAL )
+						entity soul = titan.GetTitanSoul()
+						if( IsValid( soul ) )
+						{
+						soul.soul.titanLoadout.titanExecution = "execution_random_0"
+						}
                         break;
 		case "tone":
 		                titan.GiveWeapon( "mp_titanweapon_sticky_40mm" )
@@ -618,6 +674,11 @@ void function AutoTitanLoadout( entity titan )
 						titan.GiveOffhandWeapon( "mp_titancore_salvo_core", OFFHAND_EQUIPMENT )
 						titan.GiveOffhandWeapon( "mp_titanability_sonar_pulse", OFFHAND_ANTIRODEO )
 						titan.GiveOffhandWeapon( "mp_titanability_particle_wall", OFFHAND_SPECIAL )
+						entity soul = titan.GetTitanSoul()
+						if( IsValid( soul ) )
+						{
+						soul.soul.titanLoadout.titanExecution = "execution_random_4"
+						}
                         break;
 		case "vanguard":
 		                titan.GiveWeapon( "mp_titanweapon_xo16_vanguard" )
@@ -625,6 +686,11 @@ void function AutoTitanLoadout( entity titan )
 						titan.GiveOffhandWeapon( "mp_titancore_upgrade", OFFHAND_EQUIPMENT )
 						titan.GiveOffhandWeapon( "mp_titanability_rearm", OFFHAND_ANTIRODEO )
 						titan.GiveOffhandWeapon( "mp_titanweapon_stun_laser", OFFHAND_SPECIAL )
+						entity soul = titan.GetTitanSoul()
+						if( IsValid( soul ) )
+						{
+						soul.soul.titanLoadout.titanExecution = "execution_vanguard"
+						}
                         break;
         case "northstar":
 		                titan.GiveWeapon( "mp_titanweapon_sniper" )
@@ -632,6 +698,11 @@ void function AutoTitanLoadout( entity titan )
 						titan.GiveOffhandWeapon( "mp_titancore_flight_core", OFFHAND_EQUIPMENT )
 						titan.GiveOffhandWeapon( "mp_titanability_hover", OFFHAND_ANTIRODEO )
 						titan.GiveOffhandWeapon( "mp_titanability_tether_trap", OFFHAND_SPECIAL )
+						entity soul = titan.GetTitanSoul()
+						if( IsValid( soul ) )
+						{
+						soul.soul.titanLoadout.titanExecution = "execution_random_2"
+						}
 			            break;
 		}
 	}
