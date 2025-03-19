@@ -195,7 +195,7 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 	int damageSourceID = DamageInfo_GetDamageSourceIdentifier( damageInfo )
 	entity attacker = DamageInfo_GetAttacker( damageInfo )
 
-		if ( !IsAlive( ent ) || !attacker || ent.GetTeam() == attacker.GetTeam() || attacker == ent || !ent.IsTitan() )
+		if ( !IsAlive( ent ) || !attacker || ent.GetTeam() == attacker.GetTeam() || attacker == ent || !ent.IsTitan() || ent.IsInvulnerable() )
 		return
 
 	entity soul = ent.GetTitanSoul()
@@ -224,9 +224,9 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 		            AddCinematicFlag( ent, CE_FLAG_TITAN_3P_CAM )
 		            AddCinematicFlag( ent, CE_FLAG_EXECUTION )
 					}
+					if ( attacker.Anim_IsActive() ) // Do Not Start The Execution If The Titan Is In A Animation
+					return
 					ent.SetNoTarget( true ) //Prevents other nearby AI Titans from Moshing the victim
-					ent.Anim_Stop()
-					attacker.Anim_Stop()
 					waitthread NPCTriesSyncedMeleeVsPlayer( attacker, ent )
 					if( IsValid( ent ) )
 					{
@@ -247,7 +247,7 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 void function PilotTitanExecution_WaitFrame( entity ent, entity attacker )
 {
 WaitFrame()
-		if ( !IsAlive( ent ) || !attacker || ent.GetTeam() == attacker.GetTeam() || attacker == ent || !ent.IsTitan() || !IsAlive( attacker ) || ent.IsPhaseShifted() )
+		if ( !IsAlive( ent ) || !attacker || ent.GetTeam() == attacker.GetTeam() || attacker == ent || !ent.IsTitan() || !IsAlive( attacker ) || ent.IsPhaseShifted() || ent.IsInvulnerable() )
 		WaitForever()
 }
 
@@ -444,7 +444,6 @@ entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles
 	int randomtitancamo = RandomIntRange( 0, 160 ) // 159 is all camos
 	titan.SetSkin( 2 ) // titan skin has skinIndex of 2
 	titan.SetCamo( randomtitancamo ) // set camo to random
-	//thread AntiEliteTitanExecution( titan )
 	thread AutoTitanLoadout( titan )
 	//thread EjectWhenDoomed( titan )
 	//thread __TitanKneelOrStandAfterDropin( titan, pilot )
@@ -455,12 +454,6 @@ entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles
 	UpdateEnemyMemoryFromTeammates( titan )
 
 	return titan
-}
-
-void function AntiEliteTitanExecution( entity titan )
-{
-entity soul = titan.GetTitanSoul()
-GivePassive( soul, ePassives.PAS_RONIN_AUTOSHIFT )
 }
 
 void function RandomPilotWeapon( entity pilot )
@@ -584,7 +577,6 @@ void function PilotInTitanSet( entity titan )
 {
     if( IsValid( titan ) )
 	{
-	thread AntiEliteTitanExecution( titan )
 	thread EjectWhenDoomed( titan )
 	string attackerType = GetTitanCharacterName( titan )
 	switch ( attackerType )
@@ -859,8 +851,8 @@ function NpcPilotEmbarksTitan( entity pilot, entity titan )
 	HideName( pilot )
 	//EmitSoundOnEntity( titan, sound )
 	pilot.Anim_Stop()
-	thread PlayAnim( titan, titanAnim )
-	waitthread PlayAnim( pilot, pilotAnim, titan, "hijack" )
+	thread PlayAnim( pilot, pilotAnim, titan, "hijack" )
+	waitthread PlayAnim( titan, titanAnim )
 	if ( !isInvulnerable )
 		pilot.ClearInvulnerable()
 	SetStanceStand( titan.GetTitanSoul() )
@@ -979,10 +971,15 @@ if ( IsAlive( titan ) )
 {
 if ( titan.GetTitanSoul().IsDoomed() )
 {
-wait 0.2
 wait 4
+while( true )
+{
+wait 0.2
 
 if ( !IsAlive( titan ) )
+return
+
+if ( titan.IsInvulnerable() )
 return
 
     entity soul = titan.GetTitanSoul()
@@ -1010,6 +1007,7 @@ return
 					thread TitanEjectPlayerForNpcs( titan )
 					return
 				}
+}
 }
 }
 WaitFrame()
