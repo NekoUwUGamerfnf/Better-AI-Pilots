@@ -224,8 +224,6 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 		            AddCinematicFlag( ent, CE_FLAG_TITAN_3P_CAM )
 		            AddCinematicFlag( ent, CE_FLAG_EXECUTION )
 					}
-					if ( attacker.Anim_IsActive() ) // Do Not Start The Execution If The Titan Is In A Animation
-					return
 					ent.SetNoTarget( true ) //Prevents other nearby AI Titans from Moshing the victim
 					waitthread NPCTriesSyncedMeleeVsPlayer( attacker, ent )
 					if( IsValid( ent ) )
@@ -578,6 +576,7 @@ void function PilotInTitanSet( entity titan )
     if( IsValid( titan ) )
 	{
 	thread EjectWhenDoomed( titan )
+	titan.SetCapabilityFlag( bits_CAP_SYNCED_MELEE_ATTACK, false )
 	string attackerType = GetTitanCharacterName( titan )
 	switch ( attackerType )
 	    {
@@ -625,6 +624,7 @@ void function PilotNotInTitanSet( entity titan )
 {
     if( IsValid( titan ) )
 	{
+	titan.SetCapabilityFlag( bits_CAP_SYNCED_MELEE_ATTACK, true )
 	string attackerType = GetTitanCharacterName( titan )
 	switch ( attackerType )
 	    {
