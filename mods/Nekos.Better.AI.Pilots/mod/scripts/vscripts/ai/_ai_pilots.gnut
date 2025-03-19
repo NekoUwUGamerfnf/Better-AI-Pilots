@@ -180,7 +180,7 @@ if( !attacker.IsNPC() )
 if( !attacker.IsTitan() )
     return
 
-if ( GetTitanCharacterName( attacker ) == "ronin" )
+if ( GetTitanCharacterName( attacker ) == "ronin" && attacker.GetTitanSoul().soul.seatedNpcPilot.isValid )
 {
  if ( TitanCoreInUse( attacker ) )
  {
