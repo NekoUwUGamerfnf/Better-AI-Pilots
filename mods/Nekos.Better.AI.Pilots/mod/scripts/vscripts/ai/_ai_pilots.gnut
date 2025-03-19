@@ -225,7 +225,12 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 		            AddCinematicFlag( ent, CE_FLAG_EXECUTION )
 					}
 					ent.SetNoTarget( true ) //Prevents other nearby AI Titans from Moshing the victim
+					vector angles = attacker.GetAngles()
 					waitthread NPCTriesSyncedMeleeVsPlayer( attacker, ent )
+					if( IsValid( attacker ) )
+					{
+					attacker.SetAngles( angles )
+					}
 					if( IsValid( ent ) )
 					{
 					if( ent.IsPlayer() )
@@ -576,7 +581,6 @@ void function PilotInTitanSet( entity titan )
     if( IsValid( titan ) )
 	{
 	thread EjectWhenDoomed( titan )
-	titan.SetCapabilityFlag( bits_CAP_SYNCED_MELEE_ATTACK, false )
 	string attackerType = GetTitanCharacterName( titan )
 	switch ( attackerType )
 	    {
@@ -618,13 +622,13 @@ void function PilotInTitanSet( entity titan )
 			            break;
 		}
 	}
+	titan.SetCapabilityFlag( bits_CAP_SYNCED_MELEE_ATTACK, false )
 }
 
 void function PilotNotInTitanSet( entity titan )
 {
     if( IsValid( titan ) )
 	{
-	titan.SetCapabilityFlag( bits_CAP_SYNCED_MELEE_ATTACK, true )
 	string attackerType = GetTitanCharacterName( titan )
 	switch ( attackerType )
 	    {
@@ -711,7 +715,7 @@ void function AutoTitanLoadout( entity titan )
 						entity soul = titan.GetTitanSoul()
 						if( IsValid( soul ) )
 						{
-						soul.soul.titanLoadout.titanExecution = "execution_random_0"
+						soul.soul.titanLoadout.titanExecution = "execution_ion"
 						}
                         break;
 		case "tone":

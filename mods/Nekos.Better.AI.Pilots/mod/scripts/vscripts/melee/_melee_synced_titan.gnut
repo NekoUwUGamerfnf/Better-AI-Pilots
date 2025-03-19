@@ -671,7 +671,7 @@ entity function CreateNpcTitanPilotModel( entity titan )
 
 asset function GetNpcTitanPilotModel( entity titan )
 {
-	asset modelName = TEAM_IMC_GRUNT_MODEL
+	asset modelName = $""
 
 	if ( IsEliteTitan( titan ) )
 	{
