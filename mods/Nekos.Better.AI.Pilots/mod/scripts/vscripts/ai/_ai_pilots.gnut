@@ -59,6 +59,7 @@ function AiPilots_Init()
 	AddSpawnCallback( "npc_pilot_elite", CaptainThink )
 	AddDamageFinalCallback( "player", PilotTitanExecution )
 	AddDamageFinalCallback( "npc_titan", PilotTitanExecution ) // titan execution :D
+	AddDamageCallbackSourceID( eDamageSourceId.auto_titan_melee, ApplyNormalMeleeIdToNPCTitan )
 
 	level.onNpcPilotBecomesTitanCallbacks	<- []
 	level.onNpcTitanBecomesPilotCallbacks	<- []
@@ -168,6 +169,21 @@ void function threadCaptainThink( entity npc )
 	thread NpcPilotCallTitanThink( npc )
 }
 
+void function ApplyNormalMeleeIdToNPCTitan( entity victim, var damageInfo )
+{
+entity attacker = DamageInfo_GetAttacker( damageInfo )
+int damageSourceID = DamageInfo_GetDamageSourceIdentifier( damageInfo )
+
+if( !attacker.IsNPC() )
+	return
+
+if( !attacker.IsTitan() )
+    return
+
+if( attacker.GetTitanSoul().soul.seatedNpcPilot.isValid )
+DamageInfo_SetDamageSourceIdentifier( damageInfo, eDamageSourceId.melee_titan_punch )
+}
+
 void function PilotTitanExecution( entity ent, var damageInfo )
 {
 thread PilotTitanExecution_thread( ent, damageInfo )
@@ -185,22 +201,54 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 	entity soul = ent.GetTitanSoul()
 	if( attacker.IsNPC() && attacker.IsTitan() )
 	{
-		if( IsValid( soul ) && ( damageType & DF_MELEE || damageSourceID == eDamageSourceId.auto_titan_melee ) )
+		if( IsValid( soul ) && ( damageType & DF_MELEE || damageSourceID == eDamageSourceId.auto_titan_melee || damageSourceID == eDamageSourceId.melee_titan_punch ) )
 		{
 		    entity titanSoul = attacker.GetTitanSoul()
-			if( !GetDoomedState( attacker ) && titanSoul.soul.seatedNpcPilot.isValid && !TitanCoreInUse( attacker ) ) //Doomed Elites cannot execute I Mean Doomed Titans Cannot Execute
+			if( titanSoul.soul.seatedNpcPilot.isValid && !TitanCoreInUse( attacker ) )
 			{
-				//If the player is already doomed, then just execute, if the next melee damage brings it to Doom state, wait to execute
-				if( GetDoomedState( ent ) && ( !SoulHasPassive( soul, ePassives.PAS_RONIN_AUTOSHIFT ) || !SoulHasPassive( soul, ePassives.PAS_AUTO_EJECT ) || !ent.IsPhaseShifted() ) )
+				//If the player is already doomed, then just execute, if the next melee damage brings it to Doom state, wait to execute Nuh Uh
+				if( !ent.IsPlayer() )
 				{
-					thread NPCTriesSyncedMeleeVsPlayer( attacker, ent )
+				if( IsValid( GetPetTitanOwner( ent ) ) )
+			    {
+				if( IsPlayerEmbarking( GetPetTitanOwner( ent ) ) )
+				return
+				}
+				}
+				if( GetDoomedState( ent ) && !SoulHasPassive( soul, ePassives.PAS_AUTO_EJECT ) && !ent.IsPhaseShifted() )
+				{
+				    waitthread PilotTitanExecution_WaitFrame( ent, attacker )
+					if( ent.IsPlayer() )
+					{
+					ent.PlayerMelee_SetState( PLAYER_MELEE_STATE_TITAN_EXECUTION )
+		            AddCinematicFlag( ent, CE_FLAG_TITAN_3P_CAM )
+		            AddCinematicFlag( ent, CE_FLAG_EXECUTION )
+					}
 					ent.SetNoTarget( true ) //Prevents other nearby AI Titans from Moshing the victim
+					ent.Anim_Stop()
+					attacker.Anim_Stop()
+					waitthread NPCTriesSyncedMeleeVsPlayer( attacker, ent )
+					if( IsValid( ent ) )
+					{
+					if( ent.IsPlayer() )
+					{
+					RemoveCinematicFlag( ent, CE_FLAG_TITAN_3P_CAM )
+				    RemoveCinematicFlag( ent, CE_FLAG_EXECUTION )
+					}
+					}
 				}
 				//else
 					//thread EliteExecutionDelayed( attacker, ent ) //Execute in next frame No
 			}
 		}
 	}
+}
+
+void function PilotTitanExecution_WaitFrame( entity ent, entity attacker )
+{
+WaitFrame()
+		if ( !IsAlive( ent ) || !attacker || ent.GetTeam() == attacker.GetTeam() || attacker == ent || !ent.IsTitan() || !IsAlive( attacker ) || ent.IsPhaseShifted() )
+		WaitForever()
 }
 
 function NpcPilotCallTitanThink( entity pilot )
@@ -549,26 +597,32 @@ void function PilotInTitanSet( entity titan )
                         break;
 		case "scorch":
 		                titan.SetAISettings( "npc_titan_ogre_meteor" )
+						titan.SetBehaviorSelector( "behavior_titan_ogre_meteor" )
 						titan.SetTitle( "Scorch" )
                         break;
 		case "legion":
 		                titan.SetAISettings( "npc_titan_ogre_minigun" )
+						titan.SetBehaviorSelector( "behavior_titan_ogre_minigun" )
 						titan.SetTitle( "Legion" )
 			            break;
 		case "ion":
 		                titan.SetAISettings( "npc_titan_atlas_stickybomb" )
+						titan.SetBehaviorSelector( "behavior_titan_long_range" )
 						titan.SetTitle( "Ion" )
                         break;
 		case "tone":
 		                titan.SetAISettings( "npc_titan_atlas_tracker" )
+						titan.SetBehaviorSelector( "behavior_titan_long_range" )
 						titan.SetTitle( "Tone" )
                         break;
 		case "vanguard":
 		                titan.SetAISettings( "npc_titan_atlas_vanguard" )
+						titan.SetBehaviorSelector( "behavior_titan_long_range" )
 						titan.SetTitle( "Monarch" )
                         break;
         case "northstar":
 		                titan.SetAISettings( "npc_titan_stryder_sniper" )
+						titan.SetBehaviorSelector( "behavior_titan_sniper" )
 						titan.SetTitle( "Northstar" )
 			            break;
 		}
@@ -690,6 +744,11 @@ void function AutoTitanLoadout( entity titan )
 						if( IsValid( soul ) )
 						{
 						soul.soul.titanLoadout.titanExecution = "execution_vanguard"
+						if ( RandomInt( 100 ) < 50 )
+						{
+						GivePassive( soul, ePassives.PAS_VANGUARD_COREMETER )
+						soul.soul.titanLoadout.titanExecution = "execution_vanguard_kit"
+						}
 						}
                         break;
         case "northstar":
@@ -798,7 +857,8 @@ function NpcPilotEmbarksTitan( entity pilot, entity titan )
 	//pilot.SetParent( titan, "hijack", false, 0.5 ) //the time is just in case their not exactly at the right starting position
 	pilot.SetInvulnerable()
 	HideName( pilot )
-	EmitSoundOnEntity( titan, sound )
+	//EmitSoundOnEntity( titan, sound )
+	pilot.Anim_Stop()
 	thread PlayAnim( titan, titanAnim )
 	waitthread PlayAnim( pilot, pilotAnim, titan, "hijack" )
 	if ( !isInvulnerable )
@@ -912,14 +972,44 @@ void function NpcPilotBecomesTitan( entity pilot, entity titan )
 
 void function EjectWhenDoomed( entity titan )
 {
+bool shouldEjectTitan = false
  while( true )
  {
 if ( IsAlive( titan ) )
 {
 if ( titan.GetTitanSoul().IsDoomed() )
 {
-thread TitanEjectPlayerForNpcs( titan )
-WaitForever()
+wait 0.2
+wait 4
+
+if ( !IsAlive( titan ) )
+return
+
+    entity soul = titan.GetTitanSoul()
+	if ( !IsValid( soul ) )
+		return
+                float ejectRequiredDoomedHealth = 1250
+				int health = titan.GetHealth()
+				int shieldHealth = soul.GetShieldHealth()
+				int maxHealth = titan.GetMaxHealth()
+				float shieldHealthFrac = float( health + shieldHealth )
+				entity enemy = titan.GetEnemy()
+				if ( shieldHealthFrac <= ejectRequiredDoomedHealth )
+					shouldEjectTitan = true 
+				if ( IsAlive( enemy ) && enemy.IsTitan() )
+				{
+					bool horizontallyClose = Distance2D( titan.GetOrigin(), enemy.GetOrigin() ) < 630
+					// combating an enemy titan who can execute us at close range, but we can't execute them! way too dangerous, we eject
+					// needs to handle ejecting case here, so we don't waste our health
+					bool enemyIsEjecting = HasSoul( enemy ) && enemy.GetTitanSoul().IsEjecting()
+					if ( !enemyIsEjecting )
+						shouldEjectTitan = true
+				}
+				if ( shouldEjectTitan )
+				{
+					thread TitanEjectPlayerForNpcs( titan )
+					return
+				}
 }
 }
 WaitFrame()
