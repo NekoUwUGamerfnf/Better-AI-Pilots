@@ -180,8 +180,25 @@ if( !attacker.IsNPC() )
 if( !attacker.IsTitan() )
     return
 
+if ( GetTitanCharacterName( attacker ) == "ronin" )
+{
+ if ( TitanCoreInUse( attacker ) )
+ {
+ DamageInfo_SetDamageSourceIdentifier( damageInfo, eDamageSourceId.mp_titancore_shift_core )
+ return
+ }
+ if ( !TitanCoreInUse( attacker ) )
+ {
+ DamageInfo_SetDamageSourceIdentifier( damageInfo, eDamageSourceId.melee_titan_sword )
+ return
+ }
+}
+
 if( attacker.GetTitanSoul().soul.seatedNpcPilot.isValid )
+{
 DamageInfo_SetDamageSourceIdentifier( damageInfo, eDamageSourceId.melee_titan_punch )
+return
+}
 }
 
 void function PilotTitanExecution( entity ent, var damageInfo )
