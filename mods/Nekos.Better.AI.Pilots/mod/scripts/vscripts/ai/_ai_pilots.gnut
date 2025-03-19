@@ -783,10 +783,16 @@ void function AutoTitanLoadout( entity titan )
 void function TitanStandAfterDropIn( entity titan, entity pilot )
 {
 wait 23
-if( IsAlive( titan ) && IsAlive( pilot ) && !pilot.IsInvulnerable() && titan.GetTitanSoul().GetStance() < STANCE_STANDING )
+if( IsValid( titan ) && IsValid( pilot ) )
 {
-SetStanceStand( titan.GetTitanSoul() )
+if( IsAlive( titan ) && IsAlive( pilot ) && !pilot.IsInvulnerable() )
+{
+local embarkSet = FindBestEmbark( pilot, titan )
+if ( embarkSet == null )
+{
 TitanStandUp( titan )
+}
+}
 }
 }
 
@@ -871,9 +877,9 @@ function NpcPilotEmbarksTitan( entity pilot, entity titan )
 	pilot.SetInvulnerable()
 	HideName( pilot )
 	//EmitSoundOnEntity( titan, sound )
-	pilot.Anim_Stop()
+	thread PlayAnim( titan, titanAnim )
 	thread PlayAnim( pilot, pilotAnim, titan, "hijack" )
-	waitthread PlayAnim( titan, titanAnim )
+	WaittillAnimDone( titan )
 	if ( !isInvulnerable )
 		pilot.ClearInvulnerable()
 	SetStanceStand( titan.GetTitanSoul() )
