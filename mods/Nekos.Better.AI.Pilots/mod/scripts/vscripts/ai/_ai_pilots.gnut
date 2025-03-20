@@ -243,11 +243,8 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 					}
 					ent.SetNoTarget( true ) //Prevents other nearby AI Titans from Moshing the victim
 					vector angles = attacker.GetAngles()
+					thread WaitUntilAnimationIsDone( attacker, angles )
 					waitthread NPCTriesSyncedMeleeVsPlayer( attacker, ent )
-					if( IsValid( attacker ) )
-					{
-					attacker.SetAngles( angles )
-					}
 					if( IsValid( ent ) )
 					{
 					if( ent.IsPlayer() )
@@ -262,6 +259,13 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 			}
 		}
 	}
+}
+
+void function WaitUntilAnimationIsDone( entity titan, vector angles )
+{
+WaittillAnimDone( titan )
+if( IsValid( titan ) )
+titan.SetAngles( angles )
 }
 
 void function PilotTitanExecution_WaitFrame( entity ent, entity attacker )
