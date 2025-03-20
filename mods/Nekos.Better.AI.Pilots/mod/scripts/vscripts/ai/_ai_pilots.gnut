@@ -1016,9 +1016,9 @@ return
 				int health = titan.GetHealth()
 				int shieldHealth = soul.GetShieldHealth()
 				int maxHealth = titan.GetMaxHealth()
-				float shieldHealthFrac = float( health + shieldHealth )
+				int ShieldHealth = health + shieldHealth
 				entity enemy = titan.GetEnemy()
-				if ( shieldHealthFrac <= ejectRequiredDoomedHealth )
+				if ( ShieldHealth <= ejectRequiredDoomedHealth )
 					shouldEjectTitan = true 
 				if ( IsAlive( enemy ) && enemy.IsTitan() )
 				{
@@ -1026,7 +1026,7 @@ return
 					// combating an enemy titan who can execute us at close range, but we can't execute them! way too dangerous, we eject
 					// needs to handle ejecting case here, so we don't waste our health
 					bool enemyIsEjecting = HasSoul( enemy ) && enemy.GetTitanSoul().IsEjecting()
-					if ( !enemyIsEjecting )
+					if ( !enemyIsEjecting && horizontallyClose )
 						shouldEjectTitan = true
 				}
 				if ( shouldEjectTitan )
