@@ -32,7 +32,7 @@ global struct NPCPilotStruct
 	int team
 	int spawnflags
 	float accuracy
-	float proficieny
+	float proficiency
 	float health
 	float physDamageScale
 	string weapon
@@ -165,6 +165,12 @@ void function threadCaptainThink( entity npc )
 	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	thread RandomPilotWeapon( npc )
 	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
+	thread RandomPilotName( npc )
+	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
+	npc.kv.AccuracyMultiplier = 5.0
+	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
+	npc.kv.WeaponProficiency = eWeaponProficiency.PERFECT
+	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	thread RandomPilotModel( npc )
 	thread NpcPilotCallTitanThink( npc )
 }
@@ -218,7 +224,7 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 	entity soul = ent.GetTitanSoul()
 	if( attacker.IsNPC() && attacker.IsTitan() )
 	{
-		if( IsValid( soul ) && ( damageType & DF_MELEE || damageSourceID == eDamageSourceId.auto_titan_melee || damageSourceID == eDamageSourceId.melee_titan_punch ) )
+		if( IsValid( soul ) && ( damageType & DF_MELEE || damageSourceID == eDamageSourceId.auto_titan_melee || damageSourceID == eDamageSourceId.melee_titan_punch || damageSourceID == eDamageSourceId.melee_titan_sword ) )
 		{
 		    entity titanSoul = attacker.GetTitanSoul()
 			if( titanSoul.soul.seatedNpcPilot.isValid && !TitanCoreInUse( attacker ) )
@@ -235,37 +241,14 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 				if( GetDoomedState( ent ) && !SoulHasPassive( soul, ePassives.PAS_AUTO_EJECT ) && !ent.IsPhaseShifted() )
 				{
 				    waitthread PilotTitanExecution_WaitFrame( ent, attacker )
-					if( ent.IsPlayer() )
-					{
-					ent.PlayerMelee_SetState( PLAYER_MELEE_STATE_TITAN_EXECUTION )
-		            AddCinematicFlag( ent, CE_FLAG_TITAN_3P_CAM )
-		            AddCinematicFlag( ent, CE_FLAG_EXECUTION )
-					}
 					ent.SetNoTarget( true ) //Prevents other nearby AI Titans from Moshing the victim
-					vector angles = attacker.GetAngles()
-					thread WaitUntilAnimationIsDone( attacker, angles )
-					waitthread NPCTriesSyncedMeleeVsPlayer( attacker, ent )
-					if( IsValid( ent ) )
-					{
-					if( ent.IsPlayer() )
-					{
-					RemoveCinematicFlag( ent, CE_FLAG_TITAN_3P_CAM )
-				    RemoveCinematicFlag( ent, CE_FLAG_EXECUTION )
-					}
-					}
+					waitthread PlayerTriesSyncedMelee( attacker, ent )
 				}
 				//else
 					//thread EliteExecutionDelayed( attacker, ent ) //Execute in next frame No
 			}
 		}
 	}
-}
-
-void function WaitUntilAnimationIsDone( entity titan, vector angles )
-{
-WaittillAnimDone( titan )
-if( IsValid( titan ) )
-titan.SetAngles( angles )
 }
 
 void function PilotTitanExecution_WaitFrame( entity ent, entity attacker )
@@ -286,8 +269,7 @@ function NpcPilotCallTitanThink( entity pilot )
 	pilot.Signal( "StopCallTitanThink" )
 	pilot.EndSignal( "StopCallTitanThink" )
 
-
-	string title = "Pilot's Auto-Titan"
+	string title = pilot.GetTitle() + "'s Auto-Titan"
 	local count = 1 //1 titan call in at a time
 
 	while ( true ) //this loop usually only happens once, unless the titan called in is destroyed before the living pilot can get to it
@@ -474,16 +456,74 @@ entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles
 
 	//get the titan ready to be embarked
 	SetStanceKneel( titan.GetTitanSoul() )
-	titan.SetTitle( "Pilot's Auto-Titan" )
+	titan.SetTitle( pilot.GetTitle() + "'s Auto-Titan" )
 	UpdateEnemyMemoryFromTeammates( titan )
 
 	return titan
 }
 
+array<string> function RandomPilotName( pilot ) 
+{
+array<string> RandomPilotNames
+RandomPilotNames.extend(
+[
+    "ShadowRider", "TitanVanguard", "StormBreaker", "IronFist", "NebulaKnight", "PhantomEcho", 
+    "SteelFury", "NovaViper", "ThunderClash", "VortexAlpha", "IronSentinel", "GhostReaper", 
+    "DeathPulse", "TechnoHunter", "SkyReaper", "ScorchedEarth", "BlazeStorm", "DarkRaven", 
+    "FrostWarrior", "WarBringer", "SkyForge", "WolfStriker", "ArcKnight", "EclipseHunter", 
+    "OmegaBlade", "ThunderStrike", "PhantomFury", "RedTalon", "NightRaider", "CycloneBlaze", 
+    "VenomFang", "IronPhantom", "GhostStrike", "EmberStorm", "NovaGuardian", "TitanSlayer", 
+    "RavenWarrior", "StormKnight", "DreadEcho", "DarkNova", "VoidStriker", "TitanHunter", 
+    "PlasmaBeast", "ViperStorm", "StormPhoenix", "SpecterBlaze", "SteelViper", "HellRider", 
+    "NovaRanger", "ShadowTitan", "RadiantFalcon", "CypherBlaze", "ThunderBolt", "IronViper", 
+    "TechSaber", "PhantomViper", "TitanEcho", "FireWalker", "GlacierHunter", "NexusStriker", 
+    "OmegaPhoenix", "HyperBolt", "MechaKnight", "DarkPhantom", "BlackIron", "NightFury", 
+    "BlazeTitan", "DeathStalker", "CycloneFury", "PhantomRider", "ThunderRage", "ShadowAssault", 
+    "IronWarden", "PlasmaVortex", "VengefulFury", "BlazingViper", "EchoWarrior", "SteelBreaker", 
+    "NightReaper", "FrostStrike", "StormFury", "BlazeVanguard", "TitanRanger", "NovaRavager", 
+    "WarBringerX", "ThunderGuardian", "PhantomCannon", "FrostWarriorX", "ShadowRavager", 
+    "TalonReaper", "ViperStrike", "RedInferno", "IronScorcher", "StormViper", "TitanBlaze", 
+    "EchoHunter", "PlasmaViperX", "SpecterWarrior", "GlacierStrike", "VortexReaper", "OmegaRider", 
+    "DreadKnight", "PhantomNova", "CyberStorm", "ThunderWolf", "TitanPhoenix", "FrostVanguard", 
+    "GhostWarden", "BlazeSentinel", "SpecterRanger", "PlasmaViperX", "InfernoTitan", "WarLord", 
+    "EchoTitan", "IronSpecter", "NovaBlade", "CyberViper", "StormKnightX", "PhantomFalcon", 
+    "TitanFury", "RogueStriker", "NightViper", "OmegaWarrior", "ThunderWarden", "PlasmaRanger", 
+    "BlazeKnight", "EchoFury", "TitanHellstorm", "RedViper", "IronWarrior", "SteelWolf", 
+    "ShadowKnight", "StormCannon", "NovaReaver", "CycloneTitan", "SpecterStriker", "PhantomVanguard", 
+    "BlazeStrike", "TitanX", "FrostRider", "ShadowStorm", "OmegaKnight", "VortexTitan", 
+    "TitanNight", "StormReaper", "InfernoBlaze", "PlasmaFury", "NovaTitan", "RogueTitan", 
+    "StormFuryX", "IronBlaze", "PhantomFrost", "DarkViper", "TitanSpecter", "RogueViper", 
+    "VortexBlaze", "TitanCannon", "OmegaViper", "FrostKnight", "NovaHunter", "TitanWarden", 
+    "BlazeHunter", "RedVanguard", "OmegaBlaze", "PlasmaStorm", "StormRider", "NightReaver", 
+    "TitanFrost", "CyberKnight", "BlazeViperX", "FrostViper", "SpecterTitan", "EchoKnight", 
+    "IronPhantomX", "NightTitan", "StormPhantom", "TitanWraith", "NovaStorm", "TitanWarrior", 
+    "RedStorm", "VortexKnight", "PhantomWarrior", "EchoViper", "ThunderTitan", "PlasmaTitan", 
+    "TitanRage", "NovaKnight", "SpecterFury", "TitanSlayerX", "StormRanger", "BlazeAssault", 
+    "EchoRider", "PlasmaWarrior", "TitanInferno", "RedRanger", "StormVanguard", "VortexWarrior", 
+    "RogueFury", "TitanVanguardX", "OmegaTitan", "GhostTitan", "VortexBlazeX", "BlazeFury", 
+    "PlasmaKnight", "SpecterWarden", "TitanWardenX", "PhantomStrike", "RogueKnight", "FrostStorm", 
+    "TitanBlazeX", "ViperHunter", "EchoAssault", "TitanViperX", "RedKnight", "OmegaBlazeX", 
+    "StormViperX", "PlasmaFrost", "TitanWraithX", "GhostReaver", "NightStorm", "FrostAssault", 
+    "BlazeKnightX", "PhantomHunter", "TitanWardenFury", "VortexRider", "ThunderKnight", "PlasmaFuryX", 
+    "SpecterFuryX", "NightKnight", "TitanFuryX", "OmegaStriker", "RedTitan", "VortexHunter", 
+    "FrostStrikeX", "BlazeWarrior", "TitanReaver", "SpecterHunter", "OmegaWarriorX", "PlasmaVanguard", 
+    "VortexRanger", "ShadowHunter", "TitanEchoX", "PlasmaRider", "StormFuryX", "BlazeVanguardX", 
+    "IronHunter", "TitanSpecterX", "PhantomViperX", "NightRider", "ThunderBlaze", "BlazeFuryX", 
+    "PlasmaReaver", "OmegaStrikerX", "TitanVanguardFury", "RedTitanX", "SpecterCannon", "EchoKnightX", 
+    "OmegaHunter", "VortexVanguard", "TitanThunder", "BlazeStrikeX", "FrostHunter", "PlasmaKnightX", 
+    "TitanViperVanguard", "GhostTitanX", "StormVanguardX", "PlasmaWarden", "TitanRider", "OmegaVortex", 
+    "VortexTitanX", "PlasmaWardenX", "TitanHunterX", "TitanWraithVanguard", "OmegaPhantom", 
+    "VortexWarden", "TitanGhostX", "FrostTitanX", "BlazeFuryVanguard", "SpecterTitanX", "RogueTitanX"
+]
+)
+pilot.SetTitle( "[BOT]" + RandomPilotNames.getrandom() )
+return RandomPilotNames
+}
+
 void function RandomPilotWeapon( entity pilot )
 {
 TakeWeaponsForArray( pilot, pilot.GetMainWeapons() )
-int randompilotweapon = RandomIntRange( 0, 17 )
+int randompilotweapon = RandomIntRange( 0, 12 )
 if ( randompilotweapon == 0 )
 pilot.GiveWeapon( "mp_weapon_rspn101_og" )
 if ( randompilotweapon == 1 )
@@ -499,25 +539,15 @@ pilot.GiveWeapon( "mp_weapon_smr" )
 if ( randompilotweapon == 6 )
 pilot.GiveWeapon( "mp_weapon_lmg" )
 if ( randompilotweapon == 7 )
-pilot.GiveWeapon( "mp_weapon_sniper" )
+pilot.GiveWeapon( "mp_weapon_g2" )
 if ( randompilotweapon == 8 )
 pilot.GiveWeapon( "mp_weapon_rspn101" )
 if ( randompilotweapon == 9 )
-pilot.GiveWeapon( "mp_weapon_mastiff" )
+pilot.GiveWeapon( "mp_weapon_car" )
 if ( randompilotweapon == 10 )
 pilot.GiveWeapon( "mp_weapon_hemlok" )
 if ( randompilotweapon == 11 )
 pilot.GiveWeapon( "mp_weapon_lstar" )
-if ( randompilotweapon == 12 )
-pilot.GiveWeapon( "mp_weapon_g2" )
-if ( randompilotweapon == 13 )
-pilot.GiveWeapon( "mp_weapon_dmr" )
-if ( randompilotweapon == 14 )
-pilot.GiveWeapon( "mp_weapon_car" )
-if ( randompilotweapon == 15 )
-pilot.GiveWeapon( "mp_weapon_doubletake" )
-if ( randompilotweapon == 16 )
-pilot.GiveWeapon( "mp_weapon_shotgun" )
 }
 
 void function RandomPilotModel( entity pilot )
@@ -609,37 +639,37 @@ void function PilotInTitanSet( entity titan )
 		                titan.SetAISettings( "npc_titan_stryder_leadwall" )
 						titan.SetBehaviorSelector( "behavior_titan_shotgun" )
 						thread core( titan )
-						titan.SetTitle( "Ronin" )
+						//titan.SetTitle( "Ronin" )
                         break;
 		case "scorch":
 		                titan.SetAISettings( "npc_titan_ogre_meteor" )
 						titan.SetBehaviorSelector( "behavior_titan_ogre_meteor" )
-						titan.SetTitle( "Scorch" )
+						//titan.SetTitle( "Scorch" )
                         break;
 		case "legion":
 		                titan.SetAISettings( "npc_titan_ogre_minigun" )
 						titan.SetBehaviorSelector( "behavior_titan_ogre_minigun" )
-						titan.SetTitle( "Legion" )
+						//titan.SetTitle( "Legion" )
 			            break;
 		case "ion":
 		                titan.SetAISettings( "npc_titan_atlas_stickybomb" )
 						titan.SetBehaviorSelector( "behavior_titan_long_range" )
-						titan.SetTitle( "Ion" )
+						//titan.SetTitle( "Ion" )
                         break;
 		case "tone":
 		                titan.SetAISettings( "npc_titan_atlas_tracker" )
 						titan.SetBehaviorSelector( "behavior_titan_long_range" )
-						titan.SetTitle( "Tone" )
+						//titan.SetTitle( "Tone" )
                         break;
 		case "vanguard":
 		                titan.SetAISettings( "npc_titan_atlas_vanguard" )
 						titan.SetBehaviorSelector( "behavior_titan_long_range" )
-						titan.SetTitle( "Monarch" )
+						//titan.SetTitle( "Monarch" )
                         break;
         case "northstar":
 		                titan.SetAISettings( "npc_titan_stryder_sniper" )
 						titan.SetBehaviorSelector( "behavior_titan_sniper" )
-						titan.SetTitle( "Northstar" )
+						//titan.SetTitle( "Northstar" )
 			            break;
 		}
 	}
@@ -915,7 +945,7 @@ function __NpcPilotDisembarksTitan( pilot, titan )
 
 	if ( pilot.GetTitle() != "" )
 	{
-		titan.SetTitle( "Pilot's Auto-Titan" )
+		titan.SetTitle( pilot.GetTitle() + "'s Auto-Titan" )
 	}
 
 	local isInvulnerable = pilot.IsInvulnerable()
@@ -978,17 +1008,19 @@ void function NpcPilotBecomesTitan( entity pilot, entity titan )
 
 	// respawn missing settings saving
 	//titanSoul.soul.seatedNpcPilot.spawnflags			= int( pilot.kv.spawnflags )
-	//titanSoul.soul.seatedNpcPilot.accuracy				= float( pilot.kv.AccuracyMultiplier )
-	//titanSoul.soul.seatedNpcPilot.proficieny			= float( pilot.kv.WeaponProficiency ) // incorrect spelling and wrong type
+	titanSoul.soul.seatedNpcPilot.accuracy				= float( pilot.kv.AccuracyMultiplier )
+	titanSoul.soul.seatedNpcPilot.proficiency			= float( pilot.kv.WeaponProficiency ) // incorrect spelling and wrong type
 	//titanSoul.soul.seatedNpcPilot.physDamageScale		= float( pilot.kv.physDamageScale )
 
-	//titan.SetTitle( titanSoul.soul.seatedNpcPilot.title )
+	titan.SetTitle( titanSoul.soul.seatedNpcPilot.title )
 
 	// vanilla missing, adding this behavior for a fix
 	// bubble can be destroyed properly by SetStanceStand( titan.GetTitanSoul() ) in NpcPilotEmbarksTitan()
 	// no need to use this function
 	//thread DelayedDestroyBubble( titan )
 	thread PilotInTitanSet( titan )
+	titan.kv.WeaponProficiency = titanSoul.soul.seatedNpcPilot.proficiency
+	titan.kv.AccuracyMultiplier = titanSoul.soul.seatedNpcPilot.accuracy
 	ScriptCallback_OnNpcPilotBecomesTitan( pilot, titan )
 	pilot.Destroy()
 }
@@ -1061,6 +1093,8 @@ entity function NpcTitanBecomesPilot( entity titan )
 	int team 				= titanSoul.soul.seatedNpcPilot.team
 	vector origin 			= titan.GetOrigin()
 	float angles 		    = titan.GetAngles().z
+	float proficiency 		= titanSoul.soul.seatedNpcPilot.proficiency
+	float accuracy 			= titanSoul.soul.seatedNpcPilot.accuracy
 
 	// modified here: to make npc spawn longer hardcoded
 	//entity pilot 			= CreateElitePilot( team, origin, angles )
@@ -1075,8 +1109,12 @@ entity function NpcTitanBecomesPilot( entity titan )
 	SetSpawnOption_Weapon( pilot, weapon )
 	DispatchSpawn( pilot )
 	// hardcoded
+	pilot.kv.WeaponProficiency = proficiency
+	pilot.kv.AccuracyMultiplier = accuracy
+	titan.kv.WeaponProficiency = eWeaponProficiency.AVERAGE
+	titan.kv.AccuracyMultiplier = 1.0
 	pilot.SetTitle( title )
-	titan.SetTitle( "Pilot's Auto-Titan" )
+	titan.SetTitle( pilot.GetTitle() + "'s Auto-Titan" )
 	pilot.SetModel( model ) // this is a hack, trying to avoid having a model spawn option because its easy to abuse
 	
 	// these setup should be moved to callbacks, don't handle in this file
