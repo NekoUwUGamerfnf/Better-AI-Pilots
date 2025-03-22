@@ -227,7 +227,7 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 		if( IsValid( soul ) && ( damageType & DF_MELEE || damageSourceID == eDamageSourceId.auto_titan_melee || damageSourceID == eDamageSourceId.melee_titan_punch || damageSourceID == eDamageSourceId.melee_titan_sword ) )
 		{
 		    entity titanSoul = attacker.GetTitanSoul()
-			if( titanSoul.soul.seatedNpcPilot.isValid && !TitanCoreInUse( attacker ) )
+			if( CodeCallback_IsValidMeleeExecutionTargetModded( attacker, ent ) && titanSoul.soul.seatedNpcPilot.isValid && !TitanCoreInUse( attacker ) )
 			{
 				//If the player is already doomed, then just execute, if the next melee damage brings it to Doom state, wait to execute Nuh Uh
 				if( !ent.IsPlayer() )
@@ -254,6 +254,140 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 	}
 }
 
+bool function CodeCallback_IsValidMeleeExecutionTargetModded( entity attacker, entity target )
+{
+	if ( attacker == target )
+		return false
+	
+	//if ( !attacker.IsOnGround() || !target.IsOnGround() )
+	//	return false
+		
+	if ( attacker.GetParent() || target.GetParent() )
+		return false
+
+	if( attacker.IsPlayer() )
+	{
+		if( attacker.IsZiplining() )
+			return false
+	}
+	if( target.IsPlayer() )
+	{
+		if( target.IsZiplining() )
+			return false
+	}
+
+	if ( !attacker.IsOnGround() && attacker.IsHuman() )
+		return false
+
+	if ( !IsAlive( target ) )
+		return false
+
+	if ( target.IsInvulnerable() )
+		return false
+
+	if ( target.IsNPC() && !target.CanBeMeleeExecuted() )
+		return false
+
+	// Disallow executing someone that is already in execution. That road leads to script errors and asserts.
+	if ( target.ContextAction_IsMeleeExecution() )
+		return false
+
+	if ( attacker.IsTitan() && target.IsTitan() )
+	{
+		if ( HasSoul( target ) && target.GetTitanSoul().IsEjecting() )
+			return false
+
+		if ( attacker.ContextAction_IsActive() || target.ContextAction_IsActive() )
+			return false
+
+		if ( GetCurrentPlaylistVarInt( "vortex_blocks_melee", 0 ) == 1 )
+		{
+			vector traceStartPos = attacker.EyePosition()
+			vector traceEndPos = target.EyePosition()
+			VortexBulletHit ornull vortexHit = VortexBulletHitCheck( attacker, traceStartPos, traceEndPos )
+			if ( vortexHit != null )
+			{
+				return false
+			}
+		}
+	}
+
+	// npc execution case
+	if ( attacker.IsPlayer() )
+	{
+		//No necksnaps while wall running or mantling
+		if ( attacker.IsWallRunning() )
+			return false
+
+		if ( attacker.IsTraversing() )
+			return false
+	}
+
+	if ( target.IsPlayer() ) //Disallow execution on a bunch of player-only actions
+	{
+		if ( target.IsHuman() )
+		{
+			if ( target.IsWallRunning() )
+				return false
+
+			if ( target.IsTraversing() )
+				return false
+
+			if ( !target.IsOnGround() ) //disallow mid-air necksnaps. Can't really do that for Titan executions since dash puts them in mid air... will have visual glitches unfortunately.
+				return false
+
+			if ( target.IsCrouched() )
+				return false
+
+			if ( Rodeo_IsAttached( target ) )
+				return false
+		}
+	}
+
+	if ( target.IsPhaseShifted() )
+		return false
+
+	//Disallow executions on contextActions marked Busy. Note that this allows
+	//execution on melee and leeching context actions!
+	if ( target.ContextAction_IsBusy() )
+		return false
+
+	if ( target.IsNPC() ) //NPC only checks
+	{
+		if ( target.ContextAction_IsActive() )
+			return false
+
+		if ( !target.IsInterruptable() )
+			return false
+	}
+
+	if ( attacker.GetTeam() == target.GetTeam() )
+		return false
+
+#if SERVER
+	if ( "syncedMeleeAttacker" in target.s ) //Don't allow necksnap on a guy who'se already getting necksnapped
+		return false
+#endif // #if SERVER
+
+	SyncedMeleeChooser ornull actions = GetSyncedMeleeChooserForPlayerVsTarget( attacker, target )
+	if ( actions == null )
+		return false
+	expect SyncedMeleeChooser( actions )
+
+	SyncedMelee ornull action = FindBestSyncedMelee( attacker, target, actions )
+	if ( action == null )
+		return false
+
+	// npc execution case
+	if ( attacker.IsPlayer() )
+	{
+		if ( !PlayerMelee_IsExecutionReachable( attacker, target, 0.3 ) )
+			return false
+	}
+
+	return true
+}
+
 void function PilotTitanExecution_Wait( entity attacker, vector angles )
 {
 WaittillAnimDone( attacker )
@@ -265,6 +399,9 @@ void function PilotTitanExecution_WaitFrame( entity ent, entity attacker )
 {
 WaitFrame()
 		if ( !IsAlive( ent ) || !attacker || ent.GetTeam() == attacker.GetTeam() || attacker == ent || !ent.IsTitan() || !IsAlive( attacker ) || ent.IsPhaseShifted() || ent.IsInvulnerable() )
+		WaitForever()
+
+		if ( !CodeCallback_IsValidMeleeExecutionTargetModded( attacker, ent ) )
 		WaitForever()
 }
 
