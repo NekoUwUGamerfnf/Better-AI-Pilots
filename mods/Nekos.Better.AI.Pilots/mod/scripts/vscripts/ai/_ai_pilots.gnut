@@ -244,6 +244,8 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 					ent.SetNoTarget( true ) //Prevents other nearby AI Titans from Moshing the victim
 					vector angles = attacker.GetAngles()
 					angles.y = attacker.EyeAngles().y
+					int maxyaw = 360
+					if( Distance( angles, angles ) < maxyaw )
 					thread PilotTitanExecution_Wait( attacker, angles )
 					waitthread PlayerTriesSyncedMelee( attacker, ent )
 				}
