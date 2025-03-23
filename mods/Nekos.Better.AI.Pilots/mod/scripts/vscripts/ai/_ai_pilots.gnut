@@ -227,20 +227,10 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 		if( IsValid( soul ) && ( damageType & DF_MELEE || damageSourceID == eDamageSourceId.auto_titan_melee || damageSourceID == eDamageSourceId.melee_titan_punch || damageSourceID == eDamageSourceId.melee_titan_sword ) )
 		{
 		    entity titanSoul = attacker.GetTitanSoul()
-			if( titanSoul.soul.seatedNpcPilot.isValid && !TitanCoreInUse( attacker ) )
+			if( titanSoul.soul.seatedNpcPilot.isValid && CodeCallback_IsValidMeleeExecutionTarget( attacker, ent ) )
 			{
-				//If the player is already doomed, then just execute, if the next melee damage brings it to Doom state, wait to execute Nuh Uh
-				if( !ent.IsPlayer() )
+				if( GetDoomedState( ent ) && !SoulHasPassive( soul, ePassives.PAS_AUTO_EJECT ) && !ent.IsPhaseShifted() && TitanCanSurviveDamage( ent, damageInfo ) )
 				{
-				if( IsValid( GetPetTitanOwner( ent ) ) )
-			    {
-				if( IsPlayerEmbarking( GetPetTitanOwner( ent ) ) )
-				return
-				}
-				}
-				if( GetDoomedState( ent ) && !SoulHasPassive( soul, ePassives.PAS_AUTO_EJECT ) && !ent.IsPhaseShifted() )
-				{
-				    waitthread PilotTitanExecution_WaitFrame( ent, attacker )
 					ent.SetNoTarget( true ) //Prevents other nearby AI Titans from Moshing the victim
 					vector angles = attacker.GetAngles()
 					angles.y = attacker.EyeAngles().y
@@ -249,25 +239,57 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 					thread PilotTitanExecution_Wait( attacker, angles )
 					waitthread PlayerTriesSyncedMelee( attacker, ent )
 				}
-				//else
-					//thread EliteExecutionDelayed( attacker, ent ) //Execute in next frame No
 			}
 		}
 	}
+}
+
+bool function TitanCanSurviveDamage( entity titan, var damageInfo )
+{
+    int damage = int( DamageInfo_GetDamage( damageInfo ) )
+    int validHealth = GetTitanValidHealthFromDamageInfo( titan, damageInfo )
+    //print( "titan( " + string( titan ) + " )'s valid health: " + string( validHealth ) )
+    return damage < validHealth
+}
+
+int function GetTitanValidHealthFromDamageInfo( entity titan, var damageInfo )
+{
+    // force kill damage -- health is never valid
+    if ( DamageInfo_GetForceKill( damageInfo ) )
+        return 0
+
+    const int INFINITE_HEALTH = 999999 // over max health limit, means titan won't die from damage
+
+    entity soul = titan.GetTitanSoul()
+    int healthShield = titan.GetHealth() 
+    if ( IsValid( soul ) )
+        healthShield += soul.GetShieldHealth()
+    // undoomed titan
+    if ( GetDoomedState( titan ) )
+    {
+        // in damage protection -- never die from current damage
+        if ( IsValid( soul ) )
+        {
+            if ( Time() - soul.soul.doomedStartTime < TITAN_DOOMED_INVUL_TIME )
+                return INFINITE_HEALTH
+        }
+
+        // normal doomed titan, valid health is current health + shield
+        return healthShield
+    }
+    
+    return 0 // titan in unknown state...
 }
 
 void function PilotTitanExecution_Wait( entity attacker, vector angles )
 {
 WaittillAnimDone( attacker )
 if( IsValid( attacker ) )
+{
+int maxyaw = 360
+if( Distance( angles, angles ) < maxyaw )
 attacker.SetAngles( angles )
 }
-
-void function PilotTitanExecution_WaitFrame( entity ent, entity attacker )
-{
-WaitFrame()
-		if ( !IsAlive( ent ) || !attacker || ent.GetTeam() == attacker.GetTeam() || attacker == ent || !ent.IsTitan() || !IsAlive( attacker ) || ent.IsPhaseShifted() || ent.IsInvulnerable() )
-		WaitForever()
 }
 
 function NpcPilotCallTitanThink( entity pilot )
@@ -735,6 +757,7 @@ void function AutoTitanLoadout( entity titan )
 	titan.TakeOffhandWeapon( OFFHAND_SPECIAL )
 	titan.TakeOffhandWeapon( OFFHAND_ANTIRODEO )
 	titan.TakeOffhandWeapon( OFFHAND_EQUIPMENT )
+	titan.TakeOffhandWeapon( OFFHAND_MELEE )
 	string attackerType = GetTitanCharacterName( titan )
 	switch ( attackerType )
 	    {
@@ -757,6 +780,7 @@ void function AutoTitanLoadout( entity titan )
 						titan.GiveOffhandWeapon( "mp_titancore_flame_wave", OFFHAND_EQUIPMENT )
 						titan.GiveOffhandWeapon( "mp_titanability_slow_trap", OFFHAND_ANTIRODEO )
 						titan.GiveOffhandWeapon( "mp_titanweapon_heat_shield", OFFHAND_SPECIAL )
+						titan.GiveOffhandWeapon( "melee_titan_punch", OFFHAND_MELEE )
 						entity soul = titan.GetTitanSoul()
 						if( IsValid( soul ) )
 						{
@@ -769,6 +793,7 @@ void function AutoTitanLoadout( entity titan )
 						titan.GiveOffhandWeapon( "mp_titancore_siege_mode", OFFHAND_EQUIPMENT )
 						titan.GiveOffhandWeapon( "mp_titanability_ammo_swap", OFFHAND_ANTIRODEO )
 						titan.GiveOffhandWeapon( "mp_titanability_gun_shield", OFFHAND_SPECIAL )
+						titan.GiveOffhandWeapon( "melee_titan_punch", OFFHAND_MELEE )
 						entity soul = titan.GetTitanSoul()
 						if( IsValid( soul ) )
 						{
@@ -781,6 +806,7 @@ void function AutoTitanLoadout( entity titan )
 						titan.GiveOffhandWeapon( "mp_titancore_laser_cannon", OFFHAND_EQUIPMENT )
 						titan.GiveOffhandWeapon( "mp_titanability_laser_trip", OFFHAND_ANTIRODEO )
 						titan.GiveOffhandWeapon( "mp_titanweapon_vortex_shield", OFFHAND_SPECIAL )
+						titan.GiveOffhandWeapon( "melee_titan_punch", OFFHAND_MELEE )
 						entity soul = titan.GetTitanSoul()
 						if( IsValid( soul ) )
 						{
@@ -793,6 +819,7 @@ void function AutoTitanLoadout( entity titan )
 						titan.GiveOffhandWeapon( "mp_titancore_salvo_core", OFFHAND_EQUIPMENT )
 						titan.GiveOffhandWeapon( "mp_titanability_sonar_pulse", OFFHAND_ANTIRODEO )
 						titan.GiveOffhandWeapon( "mp_titanability_particle_wall", OFFHAND_SPECIAL )
+						titan.GiveOffhandWeapon( "melee_titan_punch", OFFHAND_MELEE )
 						entity soul = titan.GetTitanSoul()
 						if( IsValid( soul ) )
 						{
@@ -805,6 +832,7 @@ void function AutoTitanLoadout( entity titan )
 						titan.GiveOffhandWeapon( "mp_titancore_upgrade", OFFHAND_EQUIPMENT )
 						titan.GiveOffhandWeapon( "mp_titanability_rearm", OFFHAND_ANTIRODEO )
 						titan.GiveOffhandWeapon( "mp_titanweapon_stun_laser", OFFHAND_SPECIAL )
+						titan.GiveOffhandWeapon( "melee_titan_punch", OFFHAND_MELEE )
 						entity soul = titan.GetTitanSoul()
 						if( IsValid( soul ) )
 						{
@@ -822,6 +850,7 @@ void function AutoTitanLoadout( entity titan )
 						titan.GiveOffhandWeapon( "mp_titancore_flight_core", OFFHAND_EQUIPMENT )
 						titan.GiveOffhandWeapon( "mp_titanability_hover", OFFHAND_ANTIRODEO )
 						titan.GiveOffhandWeapon( "mp_titanability_tether_trap", OFFHAND_SPECIAL )
+						titan.GiveOffhandWeapon( "melee_titan_punch", OFFHAND_MELEE )
 						entity soul = titan.GetTitanSoul()
 						if( IsValid( soul ) )
 						{
