@@ -687,7 +687,7 @@ void function PilotInTitanSet( entity titan )
 	}
 	titan.SetCapabilityFlag( bits_CAP_SYNCED_MELEE_ATTACK, false )
 	titan.EnableNPCMoveFlag( NPCMF_PREFER_SPRINT | NPCMF_DISABLE_MOVE_TRANSITIONS )
-	titan.EnableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN | NPC_DIRECTIONAL_MELEE )
+	titan.EnableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN )
 	titan.DisableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE | NPC_USE_SHOOTING_COVER )
 }
 
@@ -721,7 +721,7 @@ void function PilotNotInTitanSet( entity titan )
 			            break;
 		}
 	titan.DisableNPCMoveFlag( NPCMF_PREFER_SPRINT | NPCMF_DISABLE_MOVE_TRANSITIONS )
-	titan.DisableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN | NPC_DIRECTIONAL_MELEE )
+	titan.DisableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN )
 	titan.EnableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE | NPC_USE_SHOOTING_COVER )
 	}
 }
@@ -1060,9 +1060,6 @@ wait 0.2
 if ( !IsAlive( titan ) )
 return
 
-if ( titan.IsInvulnerable() )
-return
-
     entity soul = titan.GetTitanSoul()
 	if ( !IsValid( soul ) )
 		return
@@ -1085,8 +1082,11 @@ return
 				}
 				if ( shouldEjectTitan )
 				{
+				    if ( !titan.IsInvulnerable() )
+					{
 					thread TitanEjectPlayerForNpcs( titan )
 					return
+					}
 				}
 }
 }

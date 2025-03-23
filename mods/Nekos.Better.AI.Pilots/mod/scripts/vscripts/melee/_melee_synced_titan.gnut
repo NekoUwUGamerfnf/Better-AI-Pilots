@@ -650,21 +650,9 @@ entity function CreateNpcTitanPilotModel( entity titan )
 	if( modelName == $"" )
 	return
 
-	if ( titan.GetTitanSoul().soul.seatedNpcPilot.isValid )
-	{
-	int origin = 0
-	int angles = 0
-	int team = titan.GetTeam()
-	entity pilot = CreateNPC( "npc_pilot_elite", team, origin, angles )
-	DispatchSpawn( pilot )
-	pilot.SetModel( modelName )
-	SetTeam( pilot, team )
-	NPC_NoTarget( pilot )
-	pilot.EnableNPCFlag( NPC_IGNORE_ALL )
-	HideName( pilot )
-	return pilot
-	}
-	return CreatePropDynamic( modelName )
+	entity model = CreatePropDynamic( modelName )
+	SetTeam( model, titan.GetTeam() )
+	return model
 }
 
 
