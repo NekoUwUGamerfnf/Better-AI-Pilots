@@ -172,7 +172,50 @@ void function threadCaptainThink( entity npc )
 	npc.kv.WeaponProficiency = eWeaponProficiency.PERFECT
 	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	thread RandomPilotModel( npc )
+	entity pilotminimap = createpilotminimap( npc )
+	thread pilotminimaponpilotdeath( npc, pilotminimap )
 	thread NpcPilotCallTitanThink( npc )
+}
+
+entity function createpilotminimap( entity npc )
+{
+entity pilotminimap = CreateEntity( "npc_spectre" )
+DispatchSpawn( pilotminimap )
+TakeWeaponsForArray( pilotminimap, pilotminimap.GetMainWeapons() )
+pilotminimap.kv.VisibilityFlags = ENTITY_VISIBLE_TO_NOBODY
+pilotminimap.Hide()
+HideName( pilotminimap )
+pilotminimap.SetParent( npc, "HEADFOCUS" )
+pilotminimap.NotSolid()
+pilotminimap.kv.CollisionGroup = 0
+pilotminimap.SetInvulnerable()
+SetTeam( pilotminimap, npc.GetTeam() )
+NPC_NoTarget( pilotminimap )
+pilotminimap.EnableNPCFlag( NPC_IGNORE_ALL )
+pilotminimap.StopPhysics()
+return pilotminimap
+}
+
+void function pilotminimaponpilotdeath( entity npc, entity pilotminimap )
+{
+ while( true )
+ {
+if( IsValid( npc ) && IsValid( pilotminimap ) )
+{
+if( npc.GetTeam() != pilotminimap.GetTeam() )
+SetTeam( pilotminimap, npc.GetTeam() )
+}
+if( IsValid( npc ) && !IsValid( pilotminimap ) )
+{
+pilotminimap = createpilotminimap( npc )
+}
+if( !IsValid( npc ) && IsValid( pilotminimap ) )
+{
+pilotminimap.Destroy()
+return
+}
+WaitFrame()
+ }
 }
 
 void function ApplyNormalMeleeIdToNPCTitan( entity victim, var damageInfo )
@@ -231,11 +274,9 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 			{
 				if( GetDoomedState( ent ) && !SoulHasPassive( soul, ePassives.PAS_AUTO_EJECT ) && !ent.IsPhaseShifted() && TitanCanSurviveDamage( ent, damageInfo ) )
 				{
-					ent.SetNoTarget( true ) //Prevents other nearby AI Titans from Moshing the victim
+					ent.SetNoTarget( true )
 					vector angles = attacker.GetAngles()
 					angles.y = attacker.EyeAngles().y
-					int maxyaw = 360
-					if( Distance( angles, angles ) < maxyaw )
 					thread PilotTitanExecution_Wait( attacker, angles )
 					waitthread PlayerTriesSyncedMelee( attacker, ent )
 				}
@@ -938,28 +979,26 @@ function NpcPilotEmbarksTitan( entity pilot, entity titan )
 		embarkSet = FindBestEmbark( pilot, titan )
 	}
 
-	local pilotAnim = GetAnimFromAlias( titanSubClass, embarkSet.animSet.thirdPersonKneelingAlias )
+	FirstPersonSequenceStruct sequence
+	sequence.attachment = "hijack"
+	sequence.useAnimatedRefAttachment = expect bool ( embarkSet.action.useAnimatedRefAttachment )
+	sequence.blendTime = 0.5
+	sequence.thirdPersonAnim = GetAnimFromAlias( titanSubClass, embarkSet.animSet.thirdPersonKneelingAlias )
+	sequence.thirdPersonAnim = GetAnimFromAlias( titanSubClass, embarkSet.animSet.thirdPersonKneelingAlias )
 	local titanAnim = embarkSet.animSet.titanKneelingAnim
-	local sound = embarkSet.audioSet.thirdPersonKneelingAudioAlias
 	if ( titan.GetTitanSoul().GetStance() > STANCE_STANDING )
 	{
-	pilotAnim = GetAnimFromAlias( titanSubClass, embarkSet.animSet.thirdPersonStandingAlias )
+	sequence.thirdPersonAnim = GetAnimFromAlias( titanSubClass, embarkSet.animSet.thirdPersonStandingAlias )
 	titanAnim = embarkSet.animSet.titanStandingAnim
-	sound = embarkSet.audioSet.thirdPersonStandingAudioAlias
 	}
-	//if ( !titan.ContextAction_IsBusy() ) //might be set from kneeling
-		//titan.ContextAction_SetBusy()
-	//pilot.ContextAction_SetBusy()
 
 	if ( IsCloaked( pilot ) )
 		pilot.SetCloakDuration( 0, 0, 1.5 )
 
-	//pilot.SetParent( titan, "hijack", false, 0.5 ) //the time is just in case their not exactly at the right starting position
 	pilot.SetInvulnerable()
 	HideName( pilot )
-	//EmitSoundOnEntity( titan, sound )
-	thread PlayAnim( titan, titanAnim )
-	thread PlayAnim( pilot, pilotAnim, titan, "hijack" )
+	thread FirstPersonSequence( sequence, pilot, titan )
+	thread PlayAnimGravity( titan, titanAnim )
 	WaittillAnimDone( titan )
 	if ( !isInvulnerable )
 		pilot.ClearInvulnerable()
