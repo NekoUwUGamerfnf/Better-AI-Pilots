@@ -275,9 +275,8 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 				if( GetDoomedState( ent ) && !SoulHasPassive( soul, ePassives.PAS_AUTO_EJECT ) && !ent.IsPhaseShifted() && TitanCanSurviveDamage( ent, damageInfo ) )
 				{
 					ent.SetNoTarget( true )
-					vector angles = attacker.GetAngles()
-					angles.y = attacker.EyeAngles().y
-					thread PilotTitanExecution_Wait( attacker, angles )
+					vector attackerStartingAngles = attacker.GetAngles()
+					thread PilotTitanExecution_Wait( attacker, attackerStartingAngles )
 					waitthread PlayerTriesSyncedMelee( attacker, ent )
 				}
 			}
@@ -322,13 +321,15 @@ int function GetTitanValidHealthFromDamageInfo( entity titan, var damageInfo )
     return 0 // titan in unknown state...
 }
 
-void function PilotTitanExecution_Wait( entity attacker, vector angles )
+void function PilotTitanExecution_Wait( entity attacker, vector attackerStartingAngles )
 {
 WaittillAnimDone( attacker )
 if( IsValid( attacker ) )
 {
-int maxyaw = 360
-if( Distance( angles, angles ) < maxyaw )
+vector angles = attacker.GetAngles()
+// reset their x, z angles
+angles.x = attackerStartingAngles.x
+angles.z = attackerStartingAngles.z
 attacker.SetAngles( angles )
 }
 }
