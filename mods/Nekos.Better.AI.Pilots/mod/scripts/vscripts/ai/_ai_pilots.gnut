@@ -145,6 +145,10 @@ void function threadCaptainThink( entity npc )
 {
     if( GetMapName() == "mp_wargames" && (GetGameState() < eGameState.Playing))
 	return
+
+	if( npc.GetTitle() == "#NPC_DROZ_NAME" )
+	return
+
 	npc.EndSignal( "OnDestroy" )
 	npc.EndSignal( "OnDeath" )
 
@@ -477,7 +481,7 @@ function NpcPilotRunsToAndEmbarksFallingTitan( entity pilot, entity titan )
 			SetStanceStand( titan.GetTitanSoul() )
 
 			//the pilot never made it to embark - lets stand our titan up so he can fight
-			if ( !TitanHasNpcPilot( titan ) )
+			if ( titan.GetTitanSoul().GetStance() == STANCE_KNEELING || titan.GetTitanSoul().GetStance() == STANCE_KNEEL )
 			{
 				thread PlayAnimGravity( titan, "at_hotdrop_quickstand" )
 				//HideName( titan )
@@ -509,8 +513,29 @@ entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles
 
 	//spawn a titan
 	array<string> settingsArray = GetAllowedTitanAISettings()
+	bool usewarpfall = false
+	bool usedomeshieldwarpfall = false
 
 	string titanSettings = settingsArray.getrandom()
+	if ( RandomInt( 2 ) < 1 )
+	{
+	usewarpfall = true
+	}
+   if( usewarpfall == false )
+   {
+	if ( GetMapName().find( "mp_lf_") != null || GetMapName() == "mp_grave" )
+	{
+	usedomeshieldwarpfall = true
+	}
+   }
+	if( usewarpfall == true )
+	{
+	NPCPrespawnWarpfallSequence( titanSettings, origin, angles )
+	}
+	if( usedomeshieldwarpfall == true )
+	{
+	NPCPrespawnWarpfallSequenceModded( titanSettings, origin, angles )
+	}
 	entity titan = CreateNPC( "npc_titan", pilot.GetTeam(), origin, angles )
 	SetSpawnOption_AISettings( titan, titanSettings )
 	DispatchSpawn( titan )
@@ -518,7 +543,21 @@ entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles
 	NpcPilotSetPetTitan( pilot, titan )
 
 	//call it in
+   if ( usewarpfall == false )
+   {
+	if( usedomeshieldwarpfall == false )
+	{
 	thread NPCTitanHotdrops( titan, false )
+	}
+   }
+   else
+   {
+   thread NPCTitanHotdropsWarpfall( titan, true )
+   }
+	if( usedomeshieldwarpfall == true )
+	{
+	thread NPCTitanHotdrops( titan, false, "at_hotdrop_drop_2knee_turbo_upgraded" )
+	}
 	thread TitanStandAfterDropIn( titan, pilot )
     titan.SetOwner( pilot )
 	NPCFollowsNPC( titan, pilot )
@@ -536,6 +575,81 @@ entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles
 	UpdateEnemyMemoryFromTeammates( titan )
 
 	return titan
+}
+
+function NPCTitanHotdropsWarpfall( entity titan, bool standImmediately, string titanfallAnim = "at_hotdrop_drop_2knee_turbo_upgraded" )
+{
+	titan.EndSignal( "OnDeath" )
+	titan.EndSignal( "OnDestroy" )
+
+	titan.e.isHotDropping = true
+	titan.s.bubbleShieldStatus <- 0
+
+	titan.SetEfficientMode( true )
+	titan.SetTouchTriggers( false )
+	titan.SetAimAssistAllowed( false )
+
+	float impactTime = GetHotDropImpactTime( titan, titanfallAnim )
+	vector origin = titan.GetOrigin()
+	vector angles = titan.GetAngles()
+
+	#if GRUNTCHATTER_ENABLED
+		GruntChatter_TryIncomingSpawn( titan, origin )
+	#endif
+
+	#if MP
+	TryAnnounceTitanfallWarningToEnemyTeam( titan.GetTeam(), origin )
+	#endif
+
+	waitthread PlayersTitanHotdrops( titan, origin, angles, null, titanfallAnim )
+
+	if ( standImmediately )
+	{
+		SetStanceStand( titan.GetTitanSoul() )
+		waitthread PlayAnimGravity( titan, "at_hotdrop_quickstand" )
+	}
+
+	titan.SetEfficientMode( false )
+	titan.SetTouchTriggers( true )
+	titan.SetAimAssistAllowed( true )
+
+	titan.e.isHotDropping = false
+	titan.Signal( "TitanHotDropComplete" )
+
+	titan.SetNoTarget( false )
+
+	while( titan.s.bubbleShieldStatus == 1 )
+		titan.WaitSignal( "BubbleShieldStatusUpdate" )
+}
+
+void function NPCPrespawnWarpfallSequenceModded( string aiSettings, vector spawnOrigin, vector spawnAngle )
+{
+	string animation = "at_hotdrop_drop_2knee_turbo_upgraded"
+//	string settings = GetTitanForPlayer( player ).titanSetFile
+	string playerSettings = expect string( Dev_GetAISettingByKeyField_Global( aiSettings, "npc_titan_player_settings" ) )
+	asset model = GetPlayerSettingsAssetForClassName( playerSettings, "bodymodel" )
+	Attachment warpAttach = GetAttachmentAtTimeFromModel( model, animation, "offset", spawnOrigin, spawnAngle, 0 )
+
+	entity fakeTitan = CreatePropDynamic( model )
+	float impactTime = GetHotDropImpactTime( fakeTitan, animation )
+
+	#if SP //MP AI already call DisableTitanfallForLifetimeOfEntityNearOrigin() in SpawnNeutralAI()/SpawnTeamAI() functions. Pretty sure can just remove this for SP too
+		thread TemporarilyDisableTitanfallAroundRadius( spawnOrigin, 72, WARPFALL_SOUND_DELAY + WARPFALL_FX_DELAY ) //TODO: Look into getting rid of this. Doesn't play well with DisableTitanfallForLifetimeOfEntityNearOrigin. Only used in Beacon
+	#endif
+
+	fakeTitan.Kill_Deprecated_UseDestroyInstead()
+
+	EmitSoundAtPosition( TEAM_UNASSIGNED, spawnOrigin, "Titan_3P_Warpfall_CallIn" )
+
+	wait WARPFALL_SOUND_DELAY + 2.5
+
+	//	"Titan_1P_Warpfall_Start" 			- for first person warp calls, starting right on the button press
+	//	"Titan_3P_Warpfall_Start"  			- for any 3P other player or NPC when they call in a warp, starting right on their button press
+	EmitSoundAtPosition( TEAM_UNASSIGNED, spawnOrigin, "Titan_3P_Warpfall_Start" )
+
+	PlayFX( TURBO_WARP_FX, warpAttach.position + Vector(0,0,-104), warpAttach.angle )
+
+	wait WARPFALL_FX_DELAY
 }
 
 array<string> function RandomPilotName( pilot ) 
