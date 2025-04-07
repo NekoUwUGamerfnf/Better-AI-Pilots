@@ -28,6 +28,7 @@ global function AddCallback_OnNpcPilotBecomesTitan
 global struct NPCPilotStruct
 {
 	bool isValid = false
+	bool titanstanding = false
 
 	int team
 	int spawnflags
@@ -344,8 +345,8 @@ function NpcPilotCallTitanThink( entity pilot )
 	Assert( IsAlive( pilot ) )
 	Assert ( !pilot.IsTitan() )
 
-	pilot.EndSignal( "OnDestroy" )
-	pilot.EndSignal( "OnDeath" )
+	//pilot.EndSignal( "OnDestroy" )
+	//pilot.EndSignal( "OnDeath" )
 	pilot.Signal( "StopCallTitanThink" )
 	pilot.EndSignal( "StopCallTitanThink" )
 
@@ -354,17 +355,30 @@ function NpcPilotCallTitanThink( entity pilot )
 
 	while ( true ) //this loop usually only happens once, unless the titan called in is destroyed before the living pilot can get to it
 	{
+	    if( !IsValid( pilot ) )
+	    return
+	    if( !IsAlive( pilot ) )
+	    return
 		entity titan = NpcPilotGetPetTitan( pilot )
 		if ( !IsAlive( titan ) )
 		{
 			//wait for ready titan
 			waitthread __WaitforTitanCallinReady( pilot )
+		    if( !IsValid( pilot ) )
+	        return
+	        if( !IsAlive( pilot ) )
+	        return
 
 			//ready to call in - look for a good spot
 			SpawnPointFP spawnPoint
 			while ( true )
 			{
 				wait ( RandomFloatRange( 1, 2 ) )
+
+		        if( !IsValid( pilot ) )
+	            return
+	            if( !IsAlive( pilot ) )
+	            return
 
 				//dont do stuff when animating on a parent
 				if ( pilot.GetParent() )
@@ -391,47 +405,6 @@ function NpcPilotCallTitanThink( entity pilot )
 			titan = NpcPilotCallsInAndEmbarksTitan( pilot, spawnPoint.origin, spawnPoint.angles )
 			titan.SetTitle( title )
 		}
-		else
-		{
-			Assert( IsAlive( titan ) )
-
-			if ( HasEnemyRodeo( titan ) )
-			{
-				while ( HasEnemyRodeo( titan ) )
-				{
-					WaitSignal( titan.GetTitanSoul(), "RodeoRiderChanged", "OnDestroy" )
-				}
-
-				wait 4 //don't pop back in immediately
-			}
-
-			if ( !IsAlive( titan ) )
-				continue //the titan didn't make it, lets loop back up and try again
-
-			if ( titan.GetTitanSoul().IsDoomed() )
-			{
-				titan.WaitSignal( "OnDestroy" )
-				continue //the titan didn't make it, lets loop back up and try again
-			}
-
-			//start running to titan as it kneels
-			NPCFollowsNPC( pilot, titan )
-			thread __TitanKneelsForPilot( pilot, titan )
-			wait 2.0 //wait for titan to be in position
-
-			if ( !IsAlive( titan ) )
-				continue //the titan didn't make it, lets loop back up and try again
-
-			//run to the titan
-			NPCFollowsNPC( pilot, titan )
-
-			if ( !IsAlive( titan ) )
-				continue //the titan didn't make it, lets loop back up and try again
-
-			//embark titan
-			thread NpcPilotEmbarksTitan( pilot, titan )
-		}
-
 		local result = WaitSignal( titan, "NpcPilotBecomesTitan", "OnDeath", "OnDestroy" )
 		if ( result.signal != "NpcPilotBecomesTitan" )
 			continue //the titan didn't make it, lets loop back up and try again
@@ -496,7 +469,7 @@ function NpcPilotRunsToAndEmbarksFallingTitan( entity pilot, entity titan )
 	pilot.EndSignal( "OnDeath" )
 
 	//run to the titan
-	NPCFollowsNPC( pilot, titan )
+	NPCFollowsNPCModded( pilot, titan )
 
 	//embark titan
 	waitthread NpcPilotEmbarksTitan( pilot, titan )
@@ -516,7 +489,10 @@ entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles
 	bool usewarpfall = false
 	bool usedomeshieldwarpfall = false
 
+	settingsArray.extend([ "npc_titan_auto_atlas_ion_prime", "npc_titan_auto_ogre_scorch_prime", "npc_titan_auto_stryder_northstar_prime", "npc_titan_auto_stryder_ronin_prime", "npc_titan_auto_atlas_tone_prime", "npc_titan_auto_ogre_legion_prime" ])
 	string titanSettings = settingsArray.getrandom()
+	string pilotname = pilot.GetTitle() // Pilot Could Die During Warpfall Which Can Crash The Server
+	int pilotteam = pilot.GetTeam()
 	if ( RandomInt( 2 ) < 1 )
 	{
 	usewarpfall = true
@@ -536,11 +512,15 @@ entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles
 	{
 	NPCPrespawnWarpfallSequenceModded( titanSettings, origin, angles )
 	}
-	entity titan = CreateNPC( "npc_titan", pilot.GetTeam(), origin, angles )
+	string setFile = GetRandomTitanSetFile( titanSettings )
+	entity titan = CreateNPCTitan( setFile, pilotteam, origin, angles )
 	SetSpawnOption_AISettings( titan, titanSettings )
 	DispatchSpawn( titan )
-	thread PrimeTitan( titan )
+	if( IsValid( pilot ) )
+	{
+	if( IsAlive( pilot ) )
 	NpcPilotSetPetTitan( pilot, titan )
+	}
 
 	//call it in
    if ( usewarpfall == false )
@@ -558,23 +538,150 @@ entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles
 	{
 	thread NPCTitanHotdrops( titan, false, "at_hotdrop_drop_2knee_turbo_upgraded" )
 	}
-	thread TitanStandAfterDropIn( titan, pilot )
-    titan.SetOwner( pilot )
-	NPCFollowsNPC( titan, pilot )
-	PilotNotInTitanSet( titan )
+	if( IsValid( pilot ) )
+	{
+	 if( IsAlive( pilot ) )
+	 {
+	 titan.SetOwner( pilot )
+	 NPCFollowsNPCModded( titan, pilot )
+	 if( usewarpfall == false )
+	 thread TitanStandAfterDropIn( titan, pilot )
+	 }
+	}
+	PilotNotInTitanSet( titan, true )
 	int randomtitancamo = RandomIntRange( 0, 160 ) // 159 is all camos
 	titan.SetSkin( 2 ) // titan skin has skinIndex of 2
 	titan.SetCamo( randomtitancamo ) // set camo to random
 	thread AutoTitanLoadout( titan )
-	//thread EjectWhenDoomed( titan )
-	//thread __TitanKneelOrStandAfterDropin( titan, pilot )
+	if( usewarpfall == false )
+	thread ShouldTitanStandOrKneel( titan, pilot )
 
 	//get the titan ready to be embarked
 	SetStanceKneel( titan.GetTitanSoul() )
-	titan.SetTitle( pilot.GetTitle() + "'s Auto-Titan" )
+	titan.SetTitle( pilotname + "'s Auto-Titan" )
 	UpdateEnemyMemoryFromTeammates( titan )
 
 	return titan
+}
+
+string function GetRandomTitanSetFile( string titanSettings )
+{
+string SetFile = ""
+if( titanSettings == "npc_titan_auto_atlas_stickybomb" )
+{
+SetFile = "titan_atlas_stickybomb"
+}
+if( titanSettings == "npc_titan_auto_atlas_ion_prime" )
+{
+SetFile = "titan_atlas_ion_prime"
+}
+if( titanSettings == "npc_titan_auto_ogre_meteor" )
+{
+SetFile = "titan_ogre_meteor"
+}
+if( titanSettings == "npc_titan_auto_ogre_scorch_prime" )
+{
+SetFile = "titan_ogre_scorch_prime"
+}
+if( titanSettings == "titan_stryder_sniper" )
+{
+SetFile = "npc_titan_auto_stryder_sniper"
+}
+if( titanSettings == "npc_titan_auto_stryder_northstar_prime" )
+{
+SetFile = "titan_stryder_northstar_prime"
+}
+if( titanSettings == "npc_titan_auto_stryder_leadwall" )
+{
+SetFile = "titan_stryder_leadwall"
+}
+if( titanSettings == "npc_titan_auto_stryder_ronin_prime" )
+{
+SetFile = "titan_stryder_ronin_prime"
+}
+if( titanSettings == "npc_titan_auto_atlas_tracker" )
+{
+SetFile = "titan_atlas_tracker"
+}
+if( titanSettings == "npc_titan_auto_atlas_tone_prime" )
+{
+SetFile = "titan_atlas_tone_prime"
+}
+if( titanSettings == "npc_titan_auto_ogre_minigun" )
+{
+SetFile = "titan_ogre_minigun"
+}
+if( titanSettings == "npc_titan_auto_ogre_legion_prime" )
+{
+SetFile = "titan_ogre_legion_prime"
+}
+if( titanSettings == "npc_titan_auto_atlas_vanguard" )
+{
+SetFile = "titan_atlas_vanguard"
+}
+return SetFile
+}
+
+void function ShouldTitanStandOrKneel( entity titan, entity pilot )
+{
+titan.WaitSignal( "TitanHotDropComplete" )
+if( !IsValid( titan ) )
+return
+if( !IsAlive( titan ) )
+return
+if( !IsValid( pilot ) )
+thread TitanStandUp( titan )
+if( !IsAlive( pilot ) )
+thread TitanStandUp( titan )
+pilot.EndSignal( "OnDeath" )
+pilot.EndSignal( "OnDestroy" )
+	OnThreadEnd(
+		function () : ( titan )
+		{
+			if ( IsValid( titan ) )
+			{
+			 if( IsAlive( titan ) )
+			 {
+			 if( !titan.GetTitanSoul().soul.seatedNpcPilot.isValid && !titan.GetTitanSoul().soul.seatedNpcPilot.titanstanding )
+			 thread TitanStandUp( titan )
+			 }
+			}
+		}
+	)
+WaitForever()
+}
+
+void function NPCFollowsNPCModded( entity npc, entity leader ) // Fixed Version Of NPCFollowsNPC
+{
+thread NPCFollowsNPCModded_thread( npc, leader )
+}
+
+void function NPCFollowsNPCModded_thread( entity npc, entity leader )
+{
+    leader.EndSignal( "OnDeath" )
+	leader.EndSignal( "OnDestroy" )
+	npc.EndSignal( "OnDeath" )
+	npc.EndSignal( "OnDestroy" ) // Do This With The NPC So We Can Stop The Script When The NPC Dies
+
+	OnThreadEnd(
+		function () : ( npc )
+		{
+			if ( IsValid( npc ) )
+			{
+			 if( IsAlive( npc ) )
+			 {
+			 npc.DisableBehavior( "Follow" )
+			 npc.EnableBehavior( "Assault" )
+			 }
+			}
+		}
+	)
+
+	int followBehavior = GetDefaultNPCFollowBehavior( npc )
+	npc.InitFollowBehavior( leader, followBehavior )
+	npc.DisableBehavior( "Assault" )
+	npc.EnableBehavior( "Follow" )
+	WaitForever()
 }
 
 function NPCTitanHotdropsWarpfall( entity titan, bool standImmediately, string titanfallAnim = "at_hotdrop_drop_2knee_turbo_upgraded" )
@@ -755,41 +862,6 @@ if ( randompilotmodel == 4 )
 pilot.SetModel( $"models/humans/pilots/pilot_medium_reaper_m.mdl" )
 if ( randompilotmodel == 5 )
 pilot.SetModel( $"models/humans/pilots/pilot_medium_reaper_f.mdl" )
-}
-
-void function PrimeTitan( entity titan )
-{
-    if( IsValid( titan ) )
-	{
-	string attackerType = GetTitanCharacterName( titan )
-	switch ( attackerType )
-	    {
-		case "ronin":
-		                if ( RandomInt( 2 ) < 1 )
-                        titan.SetModel( $"models/titans/light/titan_light_ronin_prime.mdl" )
-                        break;
-		case "scorch":
-		                if ( RandomInt( 2 ) < 1 )
-                        titan.SetModel( $"models/titans/heavy/titan_heavy_scorch_prime.mdl" )
-                        break;
-		case "legion":
-		                if ( RandomInt( 2 ) < 1 )
-                        titan.SetModel( $"models/titans/heavy/titan_heavy_legion_prime.mdl" )
-			            break;
-		case "ion":
-		                if ( RandomInt( 2 ) < 1 )
-                        titan.SetModel( $"models/titans/medium/titan_medium_ion_prime.mdl" )
-                        break;
-		case "tone":
-		                if ( RandomInt( 2 ) < 1 )
-                        titan.SetModel( $"models/titans/medium/titan_medium_tone_prime.mdl" )
-                        break;
-        case "northstar":
-		                if ( RandomInt( 2 ) < 1 )
-                        titan.SetModel( $"models/titans/light/titan_light_northstar_prime.mdl" )
-			            break;
-		}
-	}
 }
 
 void function core( entity titan )
@@ -1229,12 +1301,14 @@ void function PilotInTitanSet( entity titan )
 	titan.DisableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE | NPC_USE_SHOOTING_COVER )
 }
 
-void function PilotNotInTitanSet( entity titan )
+void function PilotNotInTitanSet( entity titan, bool firsttime = false )
 {
     if( IsValid( titan ) )
 	{
-	string attackerType = GetTitanCharacterName( titan )
-	switch ( attackerType )
+	 if( firsttime != true )
+	 {
+	 string attackerType = GetTitanCharacterName( titan )
+	 switch ( attackerType )
 	    {
 		case "ronin":
 		                titan.SetAISettings( "npc_titan_auto_stryder_leadwall" )
@@ -1258,6 +1332,7 @@ void function PilotNotInTitanSet( entity titan )
 		                titan.SetAISettings( "npc_titan_auto_stryder_sniper" )
 			            break;
 		}
+	 }
 	titan.DisableNPCMoveFlag( NPCMF_PREFER_SPRINT | NPCMF_DISABLE_MOVE_TRANSITIONS )
 	titan.DisableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN | NPC_ALLOW_PATROL | NPC_ALLOW_INVESTIGATE | NPC_IGNORE_FRIENDLY_SOUND )
 	titan.EnableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE )
@@ -1393,7 +1468,8 @@ if( IsAlive( titan ) && IsAlive( pilot ) && !pilot.IsInvulnerable() )
 local embarkSet = FindBestEmbark( pilot, titan )
 if ( embarkSet == null )
 {
-TitanStandUp( titan )
+titan.GetTitanSoul().soul.seatedNpcPilot.titanstanding = true
+thread TitanStandUp( titan )
 }
 }
 }
@@ -1575,7 +1651,7 @@ void function NpcPilotBecomesTitan( entity pilot, entity titan )
 	// respawn missing settings saving
 	//titanSoul.soul.seatedNpcPilot.spawnflags			= int( pilot.kv.spawnflags )
 	titanSoul.soul.seatedNpcPilot.accuracy				= float( pilot.kv.AccuracyMultiplier )
-	titanSoul.soul.seatedNpcPilot.proficiency			= float( pilot.kv.WeaponProficiency ) // incorrect spelling and wrong type
+	titanSoul.soul.seatedNpcPilot.proficiency			= float( pilot.kv.WeaponProficiency )
 	//titanSoul.soul.seatedNpcPilot.physDamageScale		= float( pilot.kv.physDamageScale )
 
 	titan.SetTitle( titanSoul.soul.seatedNpcPilot.title )
@@ -1712,7 +1788,7 @@ entity function NpcTitanBecomesPilot( entity titan )
 	//	pilot.SetInvulnerable()
 
 	titan.SetOwner( pilot )
-	NPCFollowsNPC( titan, pilot )
+	NPCFollowsNPCModded( titan, pilot )
 
 	// respawn missing
 	NpcPilotSetPetTitan( pilot, titan ) // should always setup pet titan on titan transfer
