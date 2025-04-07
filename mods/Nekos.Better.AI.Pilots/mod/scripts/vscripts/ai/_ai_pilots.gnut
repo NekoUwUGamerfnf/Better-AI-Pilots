@@ -1596,14 +1596,24 @@ void function EjectWhenDoomed( entity titan )
 bool shouldEjectTitan = false
  while( true )
  {
-if ( IsAlive( titan ) )
-{
+if( !IsValid( titan ) )
+return
+if ( !IsAlive( titan ) )
+return
 if ( titan.GetTitanSoul().IsDoomed() )
 {
 wait 2
-while( true )
+if( !IsValid( titan ) )
+return
+
+if ( !IsAlive( titan ) )
+return
+while( titan.GetTitanSoul().IsDoomed() )
 {
 wait 0.2
+
+if( !IsValid( titan ) )
+return
 
 if ( !IsAlive( titan ) )
 return
@@ -1636,7 +1646,6 @@ return
 					return
 					}
 				}
-}
 }
 }
 WaitFrame()
