@@ -147,7 +147,7 @@ void function threadCaptainThink( entity npc )
     if( GetMapName() == "mp_wargames" && (GetGameState() < eGameState.Playing))
 	return
 
-	if( npc.GetTitle() == "#NPC_DROZ_NAME" )
+	if( npc.GetTitle() == "#NPC_DROZ_NAME" || npc.GetTitle() == "#NPC_DAVIS_NAME" )
 	return
 
 	npc.EndSignal( "OnDestroy" )
