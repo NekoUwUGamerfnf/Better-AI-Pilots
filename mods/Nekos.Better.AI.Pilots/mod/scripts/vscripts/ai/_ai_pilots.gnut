@@ -287,8 +287,7 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 				{
 					vector attackerStartingAngles = attacker.GetAngles()
 					thread PilotTitanExecution_Wait( attacker, attackerStartingAngles, attacker.IsInvulnerable() )
-					thread PlayerTriesSyncedMelee( attacker, ent )
-					ent.TakeDamage( DamageInfo_GetDamage( damageInfo ), attacker, attacker, GetDamageTableFromInfo( damageInfo ) )
+					waitthread PlayerTriesSyncedMelee( attacker, ent )
 				}
 			}
 		}
