@@ -176,10 +176,16 @@ void function threadCaptainThink( entity npc )
 	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	npc.kv.WeaponProficiency = eWeaponProficiency.PERFECT
 	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
+	thread PilotMiniMap( npc )
+	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	thread RandomPilotModel( npc )
-	entity pilotminimap = createpilotminimap( npc )
-	thread pilotminimaponpilotdeath( npc, pilotminimap )
 	thread NpcPilotCallTitanThink( npc )
+}
+
+void function PilotMiniMap( entity npc )
+{
+entity pilotminimap = createpilotminimap( npc )
+thread pilotminimaponpilotdeath( npc, pilotminimap )
 }
 
 entity function createpilotminimap( entity npc )
@@ -272,17 +278,17 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 	entity soul = ent.GetTitanSoul()
 	if( attacker.IsNPC() && attacker.IsTitan() )
 	{
-		if( IsValid( soul ) && ( damageType & DF_MELEE || damageSourceID == eDamageSourceId.auto_titan_melee || damageSourceID == eDamageSourceId.melee_titan_punch || damageSourceID == eDamageSourceId.melee_titan_sword ) )
+		if( IsValid( soul ) && ( damageType & DF_MELEE ) )
 		{
 		    entity titanSoul = attacker.GetTitanSoul()
 			if( titanSoul.soul.seatedNpcPilot.isValid && CodeCallback_IsValidMeleeExecutionTarget( attacker, ent ) )
 			{
 				if( GetDoomedState( ent ) && !SoulHasPassive( soul, ePassives.PAS_AUTO_EJECT ) && !ent.IsPhaseShifted() && TitanCanSurviveDamage( ent, damageInfo ) )
 				{
-					ent.SetNoTarget( true )
 					vector attackerStartingAngles = attacker.GetAngles()
-					thread PilotTitanExecution_Wait( attacker, attackerStartingAngles )
-					waitthread PlayerTriesSyncedMelee( attacker, ent )
+					thread PilotTitanExecution_Wait( attacker, attackerStartingAngles, attacker.IsInvulnerable() )
+					thread PlayerTriesSyncedMelee( attacker, ent )
+					ent.TakeDamage( DamageInfo_GetDamage( damageInfo ), attacker, attacker, GetDamageTableFromInfo( damageInfo ) )
 				}
 			}
 		}
@@ -326,16 +332,37 @@ int function GetTitanValidHealthFromDamageInfo( entity titan, var damageInfo )
     return 0 // titan in unknown state...
 }
 
-void function PilotTitanExecution_Wait( entity attacker, vector attackerStartingAngles )
+void function PilotTitanExecution_Wait( entity attacker, vector attackerStartingAngles, bool godmode )
 {
-WaittillAnimDone( attacker )
-if( IsValid( attacker ) )
+WaitFrame()
+if( godmode == false )
 {
-vector angles = attacker.GetAngles()
-// reset their x, z angles
-angles.x = attackerStartingAngles.x
-angles.z = attackerStartingAngles.z
-attacker.SetAngles( angles )
+  while( attacker.IsInvulnerable() )
+  {
+   WaitFrame()
+   if( !IsValid( attacker ) )
+   return
+  }
+ if( IsValid( attacker ) )
+ {
+ vector angles = attacker.GetAngles()
+ // reset their x, z angles
+ angles.x = attackerStartingAngles.x
+ angles.z = attackerStartingAngles.z
+ attacker.SetAngles( angles )
+ }
+}
+if( godmode == true )
+{
+ WaittillAnimDone( attacker )
+ if( IsValid( attacker ) )
+ {
+ vector angles = attacker.GetAngles()
+ // reset their x, z angles
+ angles.x = attackerStartingAngles.x
+ angles.z = attackerStartingAngles.z
+ attacker.SetAngles( angles )
+ }
 }
 }
 
@@ -858,6 +885,8 @@ while( true )
     {
     ronincore( titan )
     }
+	if( !IsValid( titan ) )
+	return
    }
 }
 
@@ -868,10 +897,13 @@ void function ronincore( entity titan )
     {
     titan.SetAISettings( "npc_titan_stryder_leadwall_shift_core" )
     titan.SetBehaviorSelector( "behavior_titan_melee_core" )
+	}
     titan.WaitSignal( "CoreEnd" )
 	if( IsValid( titan ) )
-    thread PilotInTitanSet( titan )
-    }
+    {
+    titan.SetAISettings( "npc_titan_stryder_leadwall" )
+	titan.SetBehaviorSelector( "behavior_titan_shotgun" )
+	}
 }
 
 void function MonitorMonarchShield( entity npc )
@@ -883,6 +915,8 @@ void function MonitorMonarchShield( entity npc )
 	if ( !soul.soul.seatedNpcPilot.isValid )
 	    return
 	
+	npc.EndSignal( "OnDestroy" )
+	npc.EndSignal( "OnDeath" )
 	soul.EndSignal( "OnDestroy" )
 	soul.EndSignal( "OnDeath" )
 	
@@ -1267,44 +1301,37 @@ void function PilotInTitanSet( entity titan )
 		                titan.SetAISettings( "npc_titan_stryder_leadwall" )
 						titan.SetBehaviorSelector( "behavior_titan_shotgun" )
 						thread core( titan )
-						//titan.SetTitle( "Ronin" )
                         break;
 		case "scorch":
 		                titan.SetAISettings( "npc_titan_ogre_meteor" )
 						titan.SetBehaviorSelector( "behavior_titan_ogre_meteor" )
-						//titan.SetTitle( "Scorch" )
                         break;
 		case "legion":
 		                titan.SetAISettings( "npc_titan_ogre_minigun" )
 						titan.SetBehaviorSelector( "behavior_titan_ogre_minigun" )
-						//titan.SetTitle( "Legion" )
 			            break;
 		case "ion":
 		                titan.SetAISettings( "npc_titan_atlas_stickybomb" )
 						titan.SetBehaviorSelector( "behavior_titan_long_range" )
-						//titan.SetTitle( "Ion" )
                         break;
 		case "tone":
 		                titan.SetAISettings( "npc_titan_atlas_tracker" )
 						titan.SetBehaviorSelector( "behavior_titan_long_range" )
-						//titan.SetTitle( "Tone" )
                         break;
 		case "vanguard":
 		                titan.SetAISettings( "npc_titan_atlas_vanguard" )
 						titan.SetBehaviorSelector( "behavior_titan_long_range" )
 						thread MonitorMonarchShield( titan )
-						//titan.SetTitle( "Monarch" )
                         break;
         case "northstar":
 		                titan.SetAISettings( "npc_titan_stryder_sniper" )
 						titan.SetBehaviorSelector( "behavior_titan_sniper" )
-						//titan.SetTitle( "Northstar" )
 			            break;
 		}
 	titan.SetCapabilityFlag( bits_CAP_SYNCED_MELEE_ATTACK, false )
-	titan.EnableNPCMoveFlag( NPCMF_PREFER_SPRINT | NPCMF_DISABLE_MOVE_TRANSITIONS )
+	titan.EnableNPCMoveFlag( NPCMF_PREFER_SPRINT )
 	titan.EnableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN | NPC_ALLOW_PATROL | NPC_ALLOW_INVESTIGATE | NPC_IGNORE_FRIENDLY_SOUND )
-	titan.DisableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE )
+	titan.DisableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM )
 	}
 }
 
@@ -1340,9 +1367,9 @@ void function PilotNotInTitanSet( entity titan, bool firsttime = false )
 			            break;
 		}
 	 }
-	titan.DisableNPCMoveFlag( NPCMF_PREFER_SPRINT | NPCMF_DISABLE_MOVE_TRANSITIONS )
+	titan.DisableNPCMoveFlag( NPCMF_PREFER_SPRINT )
 	titan.DisableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN | NPC_ALLOW_PATROL | NPC_ALLOW_INVESTIGATE | NPC_IGNORE_FRIENDLY_SOUND )
-	titan.EnableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE )
+	titan.EnableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM )
 	}
 }
 
@@ -1664,7 +1691,7 @@ if ( !IsAlive( titan ) )
 return
 if ( titan.GetTitanSoul().IsDoomed() )
 {
-wait 2
+wait 1
 if( !IsValid( titan ) )
 return
 
@@ -1745,6 +1772,7 @@ entity function NpcTitanBecomesPilot( entity titan )
 	// modified here: to make npc spawn longer hardcoded
 	SetSpawnOption_Weapon( pilot, weapon )
 	DispatchSpawn( pilot )
+	thread PilotMiniMap( pilot )
 	// hardcoded
 	pilot.kv.WeaponProficiency = proficiency
 	pilot.kv.AccuracyMultiplier = accuracy
