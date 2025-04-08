@@ -254,16 +254,17 @@ if( !attacker.IsTitan() )
 
 if ( GetTitanCharacterName( attacker ) == "ronin" && attacker.GetTitanSoul().soul.seatedNpcPilot.isValid )
 {
- if ( TitanCoreInUse( attacker ) )
+ entity meleeWeapon = attacker.GetMeleeWeapon()
+ if( IsValid( meleeWeapon ) )
  {
- DamageInfo_SetDamageSourceIdentifier( damageInfo, eDamageSourceId.mp_titancore_shift_core )
- return
+  if( meleeWeapon.HasMod( "super_charged" ) )
+  {
+  DamageInfo_SetDamageSourceIdentifier( damageInfo, eDamageSourceId.mp_titancore_shift_core )
+  return
+  }
  }
- if ( !TitanCoreInUse( attacker ) )
- {
- DamageInfo_SetDamageSourceIdentifier( damageInfo, eDamageSourceId.melee_titan_sword )
- return
- }
+DamageInfo_SetDamageSourceIdentifier( damageInfo, eDamageSourceId.melee_titan_sword )
+return
 }
 
 if( attacker.GetTitanSoul().soul.seatedNpcPilot.isValid )
@@ -298,16 +299,37 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 				if( GetDoomedState( ent ) && !SoulHasPassive( soul, ePassives.PAS_AUTO_EJECT ) && !ent.IsPhaseShifted() && TitanCanSurviveDamage( ent, damageInfo ) )
 				{
 					vector attackerStartingAngles = attacker.GetAngles()
-					int titanhealth = ent.GetHealth() - int( DamageInfo_GetDamage( damageInfo ) )
-					if( titanhealth <= 0 )
-						titanhealth = 1
-					ent.SetHealth( titanhealth )
+					thread PilotTitanExecution_DamageEnemy( ent, damageInfo )
 					thread PilotTitanExecution_Wait( attacker, attackerStartingAngles, attacker.IsInvulnerable() )
 					waitthread PlayerTriesSyncedMelee( attacker, ent )
 				}
 			}
 		}
 	}
+}
+
+void function PilotTitanExecution_DamageEnemy( entity ent, var damageInfo )
+{
+entity soul = ent.GetTitanSoul()
+if( !IsValid( soul ) )
+return
+int damage = int( DamageInfo_GetDamage( damageInfo ) )
+int shieldhealth = soul.GetShieldHealth()
+int titanhealth = ent.GetHealth()
+int shieldhealthdamaged = shieldhealth - damage
+int shieldhealthdamagedunchanged = shieldhealthdamaged
+if( shieldhealthdamaged < 0 )
+shieldhealthdamaged = 0
+soul.SetShieldHealth( shieldhealthdamaged )
+int newdamage = damage - shieldhealthdamagedunchanged
+if( newdamage < 0 )
+newdamage = 0
+if( newdamage > damage )
+newdamage = damage
+int titanhealthdamaged = titanhealth - newdamage
+if( titanhealthdamaged <= 0 )
+titanhealthdamaged = 1
+ent.SetHealth( titanhealthdamaged )
 }
 
 bool function TitanCanSurviveDamage( entity titan, var damageInfo )
@@ -1062,9 +1084,10 @@ if ( RandomInt( 100 ) < 50 )
 GivePassive( soul, ePassives.PAS_VANGUARD_CORE7 )
 
 if ( !SoulHasPassive( soul, ePassives.PAS_VANGUARD_CORE7 ) )
+GivePassive( soul, ePassives.PAS_VANGUARD_CORE9 )
+
 GivePassive( soul, ePassives.PAS_VANGUARD_CORE8 )
 
-GivePassive( soul, ePassives.PAS_VANGUARD_CORE9 )
 }
 
 void function MonarchUpgrade( entity weapon )
@@ -1110,11 +1133,8 @@ void function MonarchUpgrade( entity weapon )
 
 				entity ordnance = owner.GetOffhandWeapon( OFFHAND_RIGHT )
 
-				float ammoFrac = float( ordnance.GetWeaponPrimaryClipCount() ) / float( ordnance.GetWeaponPrimaryClipCountMax() )
 				owner.TakeWeaponNow( ordnance.GetWeaponClassName() )
 				owner.GiveOffhandWeapon( "mp_titanweapon_shoulder_rockets", OFFHAND_RIGHT )
-				ordnance = owner.GetOffhandWeapon( OFFHAND_RIGHT )
-				ordnance.SetWeaponChargeFractionForced( 1 - ammoFrac )
 			}
 			else if ( SoulHasPassive( soul, ePassives.PAS_VANGUARD_CORE9 ) ) //XO-16 Battle Rifle
 			{
