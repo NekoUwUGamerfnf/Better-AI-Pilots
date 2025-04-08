@@ -4,6 +4,7 @@ global function MeleeSyncedTitan_Init
 
 const TITANARMMODEL = $"models/weapons/arms/atlaspov.mdl"
 const TEAM_JUMPJET_DBL = $"P_team_jump_jet_DBL"
+const float BATTERY_PICKUP_IGNORE_FRAC = 0.98
 
 enum eTitanExecutionType
 {
@@ -1285,10 +1286,18 @@ void function TitanVsTitan_3p( SyncedMelee action, entity attacker, entity targe
 						if ( attacker.IsPlayer() )
 							Remote_CallFunction_Replay( attacker, "SCB_PlayTitanCockpitSounds" )
 						#if TITAN_EXECUTION_GIVES_BATTERY
-							Rodeo_GiveExecutingTitanABattery( attacker )
+							if( attacker.IsPlayer() )
+						    Rodeo_GiveExecutingTitanABattery( attacker )
+							if( !attacker.IsPlayer() )
+							Rodeo_ApplyBatteryToTitan( null, attacker )
 						#else
 							if ( shouldApplyBatteryAfterRodeo )
+							{
+							    if( attacker.IsPlayer() )
 								Rodeo_GiveExecutingTitanABattery( attacker )
+								if( !attacker.IsPlayer() )
+								Rodeo_ApplyBatteryToTitan( null, attacker )
+							}
 						#endif
 					}
 
@@ -1746,4 +1755,94 @@ bool function IsEliteTitan( entity titan )
 	}
 
 	return false
+}
+
+void function Rodeo_ApplyBatteryToTitan( entity battery, entity titan )
+{
+	entity soul = titan.GetTitanSoul()
+
+	if ( !IsValid( soul ) )
+		return
+
+	int healingAmount
+	if ( IsSingleplayer() )
+		healingAmount = 2000
+	else
+		healingAmount = GetSegmentHealthForTitan( titan )
+
+	int health = titan.GetHealth()
+	int maxHealth = titan.GetMaxHealth()
+
+	SetSoulBatteryCount( soul, GetSoulBatteryCount( soul ) + 1 )
+
+	int healthDifference = maxHealth - health
+
+	if ( IsSingleplayer() )
+	{
+		if ( soul.IsDoomed() )
+			UndoomTitan( titan, 1 )
+		else if ( healthDifference >= healingAmount )
+			titan.SetHealth( titan.GetHealth() + healingAmount )
+		else
+			titan.SetHealth( titan.GetMaxHealth() )
+
+ 		if ( GetHealthFrac( titan ) >= BATTERY_PICKUP_IGNORE_FRAC )
+ 		{
+ 			titan.SetHealth( titan.GetMaxHealth() )
+ 		}
+
+ 		titan.GetTitanSoul().nextRegenTime = Time()
+	 	if ( healthDifference < healingAmount )
+		{
+			titan.GetTitanSoul().SetShieldHealth( healingAmount - healthDifference + titan.GetTitanSoul().GetShieldHealth() )
+		}
+
+		if ( GetShieldHealthFrac( titan ) >= BATTERY_PICKUP_IGNORE_FRAC )
+ 		{
+ 			titan.GetTitanSoul().SetShieldHealth( titan.GetTitanSoul().GetShieldHealthMax() )
+ 		}
+
+	}
+	else if ( IsMultiplayer() )
+	{
+		if ( SoulHasPassive( soul, ePassives.PAS_VANGUARD_DOOM ) && soul.IsDoomed() )
+		{
+			UndoomTitan( titan, 1 )
+			titan.SetHealth( 1 )
+		}
+		float coreFrac = GetCurrentPlaylistVarFloat( "battery_core_frac", 0.2 )
+		float shieldFrac = GetCurrentPlaylistVarFloat( "battery_shield_frac", 1.0 )
+		float ampedHealthSegmentFrac = GetCurrentPlaylistVarFloat( "amped_battery_health_frac", 2.0 )
+		float healthSegmentFrac = GetCurrentPlaylistVarFloat( "battery_health_frac", 0.5 )
+
+		AddCreditToTitanCoreBuilder( titan, coreFrac ) //Always give core
+
+		int shieldHealth = soul.GetShieldHealth()
+		int shieldMaxHealth = soul.GetShieldHealthMax()
+
+		int shieldDifference = shieldMaxHealth - shieldHealth
+
+		bool batteryIsAmped = IsAmpedBattery( battery )
+		float frac = batteryIsAmped ? ampedHealthSegmentFrac : healthSegmentFrac
+
+		int addHealth = int( healingAmount * frac )
+
+		int totalHealth = minint( titan.GetMaxHealth(), titan.GetHealth() + addHealth )
+		if ( soul.IsDoomed() && batteryIsAmped )
+		{
+			UndoomTitan( titan, 1 )
+			soul.SetShieldHealth( soul.GetShieldHealthMax() )
+		}
+		else
+		{
+			titan.SetHealth( totalHealth )
+			soul.SetShieldHealth( soul.GetShieldHealthMax() )
+		}
+	}
+
+	if ( battery != null )
+	{
+		Assert( battery.GetParent() == null )
+		battery.Destroy()
+	}
 }

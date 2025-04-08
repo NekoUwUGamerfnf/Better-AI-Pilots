@@ -434,38 +434,22 @@ entity function NpcPilotCallsInAndEmbarksTitan( entity pilot, vector origin, vec
 
 function NpcPilotRunsToAndEmbarksFallingTitan( entity pilot, entity titan )
 {
-	titan.EndSignal( "OnDeath" )
-
 	//wait for it to land
 	waitthread WaitTillHotDropComplete( titan )
-	//ShowName( titan )
+
+	if( !IsValid( titan ) )
+	    return
 
 	if ( !IsAlive( titan ) )
 		return
-	titan.EndSignal( "OnDeath" )
 
-	//titan is alive on land so clean it up on thread end
-	OnThreadEnd(
-		function () : ( titan )
-		{
-			if ( !IsAlive( titan ) )
-				return
-
-			SetStanceStand( titan.GetTitanSoul() )
-
-			//the pilot never made it to embark - lets stand our titan up so he can fight
-			if ( titan.GetTitanSoul().GetStance() == STANCE_KNEELING || titan.GetTitanSoul().GetStance() == STANCE_KNEEL )
-			{
-				thread PlayAnimGravity( titan, "at_hotdrop_quickstand" )
-				//HideName( titan )
-			}
-		}
-	)
-
-	//if the pilot has died, early out
-	if ( !IsAlive( pilot ) )
+	if( !IsValid( pilot ) )
 		return
 
+	if( !IsAlive( pilot ) )
+	    return
+
+	pilot.EndSignal( "OnDestroy" )
 	pilot.EndSignal( "OnDeath" )
 
 	//run to the titan
@@ -553,6 +537,7 @@ entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles
 	titan.SetSkin( 2 ) // titan skin has skinIndex of 2
 	titan.SetCamo( randomtitancamo ) // set camo to random
 	thread AutoTitanLoadout( titan )
+	thread MonitorTitanCore( titan )
 	if( usewarpfall == false )
 	thread ShouldTitanStandOrKneel( titan, pilot )
 
@@ -922,10 +907,13 @@ void function MonitorMonarchShield( entity npc )
 	    if ( !soul.soul.seatedNpcPilot.isValid )
 	    return
 
-		if( soul.GetShieldHealth() > soul.GetShieldHealthMax() * 0.1 )
-	    {
-		thread MonitorMonarchShield( npc )
-		return
+		if( soul.GetTitanSoulNetInt( "upgradeCount" ) > 2 )
+		{
+		 if( soul.GetShieldHealth() > soul.GetShieldHealthMax() * 0.1 )
+	     {
+		 thread MonitorMonarchShield( npc )
+		 return
+		 }
 		}
 		
 		if( npc.ContextAction_IsBusy() || npc.ContextAction_IsMeleeExecution() )
@@ -950,6 +938,25 @@ void function MonitorMonarchShield( entity npc )
 			wait 2.5
 			shake.Destroy()
 			coreEffect.Destroy()
+	}
+}
+
+void function MonitorTitanCore( entity npc )
+{
+	entity soul = npc.GetTitanSoul()
+	if ( !IsValid( soul ) )
+		return
+	
+	soul.EndSignal( "OnDestroy" )
+	soul.EndSignal( "OnDeath" )
+	npc.EndSignal( "OnDestroy" )
+	npc.EndSignal( "OnDeath" )
+	
+	while( true )
+	{
+	    SoulTitanCore_SetNextAvailableTime( soul, 0.5 )
+		npc.WaitSignal( "CoreBegin" )
+		npc.WaitSignal( "CoreEnd" )
 	}
 }
 
@@ -1294,11 +1301,11 @@ void function PilotInTitanSet( entity titan )
 						//titan.SetTitle( "Northstar" )
 			            break;
 		}
-	}
 	titan.SetCapabilityFlag( bits_CAP_SYNCED_MELEE_ATTACK, false )
 	titan.EnableNPCMoveFlag( NPCMF_PREFER_SPRINT | NPCMF_DISABLE_MOVE_TRANSITIONS )
 	titan.EnableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN | NPC_ALLOW_PATROL | NPC_ALLOW_INVESTIGATE | NPC_IGNORE_FRIENDLY_SOUND )
-	titan.DisableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE | NPC_USE_SHOOTING_COVER )
+	titan.DisableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE )
+	}
 }
 
 void function PilotNotInTitanSet( entity titan, bool firsttime = false )
@@ -1509,24 +1516,6 @@ function NpcPilotEmbarksTitan( entity pilot, entity titan )
 	titan.EndSignal( "OnDestroy" )
 	titan.EndSignal( "OnDeath" )
 
-	OnThreadEnd(
-		function () : ( titan, pilot )
-		{
-			if ( IsAlive( titan ) )
-			{
-				if ( titan.ContextAction_IsBusy() )
-					//titan.ContextAction_ClearBusy()
-				titan.ClearInvulnerable()
-
-				Assert( !IsAlive( pilot ) )
-			}
-		}
-	)
-
-	local isInvulnerable = pilot.IsInvulnerable()
-	//pilot.SetInvulnerable()
-	//titan.SetInvulnerable()
-
 	local titanSubClass = GetSoulTitanSubClass( titan.GetTitanSoul() )
 	local embarkSet = FindBestEmbark( pilot, titan )
 
@@ -1552,12 +1541,9 @@ function NpcPilotEmbarksTitan( entity pilot, entity titan )
 		pilot.SetCloakDuration( 0, 0, 1.5 )
 
 	pilot.SetInvulnerable()
-	HideName( pilot )
 	thread FirstPersonSequence( sequence, pilot, titan )
 	thread PlayAnimGravity( titan, titanAnim )
 	WaittillAnimDone( titan )
-	if ( !isInvulnerable )
-		pilot.ClearInvulnerable()
 	SetStanceStand( titan.GetTitanSoul() )
 	NpcPilotBecomesTitan( pilot, titan )
 }
