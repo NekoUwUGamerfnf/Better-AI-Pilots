@@ -329,6 +329,7 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 				{
 					vector attackerStartingAngles = attacker.GetAngles()
 					thread PilotTitanExecution_DamageEnemy( ent, damageInfo )
+					DamageInfo_SetDamage( damageInfo, 0 )
 					thread PilotTitanExecution_Wait( attacker, attackerStartingAngles, attacker.IsInvulnerable() )
 					waitthread PlayerTriesSyncedMelee( attacker, ent )
 				}
@@ -1530,6 +1531,7 @@ function NpcPilotEmbarksTitan( entity pilot, entity titan )
 		pilot.SetCloakDuration( 0, 0, 1.5 )
 
 	pilot.SetInvulnerable()
+	pilot.Anim_Stop()
 	thread FirstPersonSequence( sequence, pilot, titan )
 	thread PlayAnimGravity( titan, titanAnim )
 	WaittillAnimDone( titan )
@@ -1653,7 +1655,7 @@ if ( !IsAlive( titan ) )
 return
 if ( titan.GetTitanSoul().IsDoomed() )
 {
-wait 1
+wait 2
 if( !IsValid( titan ) )
 return
 
