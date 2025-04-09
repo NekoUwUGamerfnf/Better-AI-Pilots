@@ -218,7 +218,7 @@ void function PilotSpeedFlagsAndHP( entity npc )
 npc.SetNPCMoveSpeedScale( 1.25 )
 npc.EnableNPCMoveFlag( NPCMF_PREFER_SPRINT )
 npc.EnableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN | NPC_ALLOW_PATROL | NPC_ALLOW_INVESTIGATE | NPC_IGNORE_FRIENDLY_SOUND )
-npc.DisableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM )
+npc.DisableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE )
 npc.SetMaxHealth( 750 )
 npc.SetHealth( 750 )
 }
@@ -912,7 +912,7 @@ return RandomPilotNames
 void function RandomPilotWeapon( entity pilot )
 {
 TakeWeaponsForArray( pilot, pilot.GetMainWeapons() )
-int randompilotweapon = RandomIntRange( 0, 12 )
+int randompilotweapon = RandomIntRange( 0, 13 )
 if ( randompilotweapon == 0 )
 pilot.GiveWeapon( "mp_weapon_rspn101_og" )
 if ( randompilotweapon == 1 )
@@ -937,6 +937,8 @@ if ( randompilotweapon == 10 )
 pilot.GiveWeapon( "mp_weapon_hemlok" )
 if ( randompilotweapon == 11 )
 pilot.GiveWeapon( "mp_weapon_lstar" )
+if ( randompilotweapon == 12 )
+pilot.GiveWeapon( "mp_weapon_hemlok_smg" )
 }
 
 void function RandomPilotModel( entity pilot )
@@ -1292,7 +1294,7 @@ void function PilotInTitanSet( entity titan )
 	titan.SetCapabilityFlag( bits_CAP_SYNCED_MELEE_ATTACK, false )
 	titan.EnableNPCMoveFlag( NPCMF_PREFER_SPRINT )
 	titan.EnableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN | NPC_ALLOW_PATROL | NPC_ALLOW_INVESTIGATE | NPC_IGNORE_FRIENDLY_SOUND )
-	titan.DisableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM )
+	titan.DisableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE )
 	}
 }
 
@@ -1330,7 +1332,7 @@ void function PilotNotInTitanSet( entity titan, bool firsttime = false )
 	 }
 	titan.DisableNPCMoveFlag( NPCMF_PREFER_SPRINT )
 	titan.DisableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN | NPC_ALLOW_PATROL | NPC_ALLOW_INVESTIGATE | NPC_IGNORE_FRIENDLY_SOUND )
-	titan.EnableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM )
+	titan.EnableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE )
 	}
 }
 
