@@ -36,7 +36,8 @@ global struct NPCPilotStruct
 	float proficiency
 	float health
 	float physDamageScale
-	string weapon
+	//string weapon
+	array <string> weapon // Use Array Because We Added Anti Titan Weapons
 	string squadName
 
 	asset modelAsset
@@ -201,19 +202,20 @@ void function threadCaptainThink( entity npc )
 	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	thread RandomPilotName( npc )
 	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
-	npc.kv.AccuracyMultiplier = 5.0
+	npc.kv.AccuracyMultiplier = 10.0
 	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	npc.kv.WeaponProficiency = eWeaponProficiency.PERFECT
 	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	thread PilotMiniMap( npc )
 	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
-	thread PilotSpeedFlagsAndHP( npc )
+	thread PilotSpeedFlagsHPAndBehavior( npc )
+	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
+	thread NpcPilotCallTitanThink( npc )
 	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	thread RandomPilotModel( npc )
-	thread NpcPilotCallTitanThink( npc )
 }
 
-void function PilotSpeedFlagsAndHP( entity npc )
+void function PilotSpeedFlagsHPAndBehavior( entity npc )
 {
 npc.SetNPCMoveSpeedScale( 1.25 )
 npc.EnableNPCMoveFlag( NPCMF_PREFER_SPRINT )
@@ -221,6 +223,9 @@ npc.EnableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN | NPC_ALLOW_PATROL | NPC_AL
 npc.DisableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE )
 npc.SetMaxHealth( 750 )
 npc.SetHealth( 750 )
+npc.SetBehaviorSelector( "behavior_sp_soldier" )
+npc.SetCapabilityFlag( bits_CAP_INNATE_MELEE_ATTACK1, false ) // Melee Is Broken
+npc.SetEnemyChangeCallback( OnNPCPilotEnemyChange )
 }
 
 void function PilotMiniMap( entity npc )
@@ -732,13 +737,10 @@ WaitForever()
 
 void function NPCFollowsNPCModded( entity npc, entity leader ) // Fixed Version Of NPCFollowsNPC
 {
-if( !npc.IsTitan() )
-thread NPCFollowsNPCModded_pilot( npc, leader )
-if( npc.IsTitan() )
-thread NPCFollowsNPCModded_titan( npc, leader )
+thread NPCFollowsNPCModded_thread( npc, leader )
 }
 
-void function NPCFollowsNPCModded_pilot( entity npc, entity leader )
+void function NPCFollowsNPCModded_thread( entity npc, entity leader )
 {
     leader.EndSignal( "OnDeath" )
 	leader.EndSignal( "OnDestroy" )
@@ -753,7 +755,6 @@ void function NPCFollowsNPCModded_pilot( entity npc, entity leader )
 			 if( IsAlive( npc ) )
 			 {
 			 npc.DisableBehavior( "Follow" )
-			 npc.EnableBehavior( "Assault" )
 			 }
 			}
 		}
@@ -762,18 +763,8 @@ void function NPCFollowsNPCModded_pilot( entity npc, entity leader )
 	npc.Signal( "StopHardpointBehavior" )
 	int followBehavior = GetDefaultNPCFollowBehavior( npc )
 	npc.InitFollowBehavior( leader, followBehavior )
-	npc.DisableBehavior( "Assault" )
 	npc.EnableBehavior( "Follow" )
 	WaitForever()
-}
-
-void function NPCFollowsNPCModded_titan( entity npc, entity leader )
-{
-	npc.Signal( "StopHardpointBehavior" )
-	int followBehavior = GetDefaultNPCFollowBehavior( npc )
-	npc.InitFollowBehavior( leader, followBehavior )
-	npc.DisableBehavior( "Assault" )
-	npc.EnableBehavior( "Follow" )
 }
 
 function NPCTitanHotdropsWarpfall( entity titan, bool standImmediately, string titanfallAnim = "at_hotdrop_drop_2knee_turbo_upgraded" )
@@ -939,6 +930,13 @@ if ( randompilotweapon == 11 )
 pilot.GiveWeapon( "mp_weapon_lstar" )
 if ( randompilotweapon == 12 )
 pilot.GiveWeapon( "mp_weapon_hemlok_smg" )
+int randompilotantititanweapon = RandomIntRange( 0, 3 )
+if ( randompilotantititanweapon == 0 )
+pilot.GiveWeapon( "mp_weapon_arc_launcher" )
+if ( randompilotantititanweapon == 1 )
+pilot.GiveWeapon( "mp_weapon_rocket_launcher" )
+if ( randompilotantititanweapon == 2 )
+pilot.GiveWeapon( "mp_weapon_defender" )
 }
 
 void function RandomPilotModel( entity pilot )
@@ -956,6 +954,74 @@ if ( randompilotmodel == 4 )
 pilot.SetModel( $"models/humans/pilots/pilot_medium_reaper_m.mdl" )
 if ( randompilotmodel == 5 )
 pilot.SetModel( $"models/humans/pilots/pilot_medium_reaper_f.mdl" )
+}
+
+void function OnNPCPilotEnemyChange( entity guy )
+{
+	if ( !IsAlive( guy ) )
+		return
+
+	if ( guy.IsFrozen() )
+		return
+
+	entity enemy = guy.GetEnemy()
+	if ( !IsAlive( enemy ) )
+		return
+
+	array<entity> weapons = guy.GetMainWeapons()
+	if ( weapons.len() < 2 )
+		return
+
+	entity activeWeapon = guy.GetActiveWeapon()
+	if ( !IsValid( activeWeapon ) )
+		return
+
+	string activeWeaponName = activeWeapon.GetWeaponClassName()
+	bool antiTitanActive = activeWeapon != weapons[0] && !activeWeapon.GetWeaponSettingBool( eWeaponVar.titanarmor_critical_hit_required )
+
+	bool isHeavyArmorTarget = enemy.GetArmorType() == ARMOR_TYPE_HEAVY
+
+	string weaponToChange = ""
+	if ( isHeavyArmorTarget )
+	{
+		if ( antiTitanActive )
+			return
+
+		foreach ( entity weapon in weapons )
+		{
+			string className = weapon.GetWeaponClassName()
+			if ( activeWeaponName == className )
+				continue
+			bool isMainWeapon = weapon == weapons[0]
+			bool isAntiTitan = !weapon.GetWeaponSettingBool( eWeaponVar.titanarmor_critical_hit_required )
+			if ( isAntiTitan && !isMainWeapon )
+			{
+				weaponToChange = className
+				break
+			}
+		}
+	}
+	else if ( antiTitanActive )
+	{
+		foreach ( entity weapon in weapons )
+		{
+			string className = weapon.GetWeaponClassName()
+			if ( activeWeaponName == className )
+				continue
+			bool isMainWeapon = weapon == weapons[0]
+			bool isAntiTitan = !weapon.GetWeaponSettingBool( eWeaponVar.titanarmor_critical_hit_required )
+			if ( isMainWeapon || !isAntiTitan )
+			{
+				weaponToChange = className
+				break
+			}
+		}
+	}
+ 
+	if ( weaponToChange == "" )
+		return
+
+		guy.SetActiveWeaponByName( weaponToChange )
 }
 
 void function core( entity titan )
@@ -1613,12 +1679,18 @@ void function NpcPilotBecomesTitan( entity pilot, entity titan )
 	Assert( IsGrunt( pilot ) || IsPilotElite( pilot ) )
 	Assert( titan.IsTitan() )
 
+	array <entity> weapons = pilot.GetMainWeapons()
+	array <string> weaponNames
+	foreach( entity weapon in weapons )
+	{
+	weaponNames.append( weapon.GetWeaponClassName() )
+	}
 	entity titanSoul = titan.GetTitanSoul()
 
 	titanSoul.soul.seatedNpcPilot.isValid				= true
 
 	titanSoul.soul.seatedNpcPilot.team 					= pilot.GetTeam()
-	titanSoul.soul.seatedNpcPilot.weapon 				= pilot.GetMainWeapons()[0].GetWeaponClassName()
+	titanSoul.soul.seatedNpcPilot.weapon 				= weaponNames
 
 	titanSoul.soul.seatedNpcPilot.modelAsset 			= pilot.GetModelName()
 	titanSoul.soul.seatedNpcPilot.title 				= pilot.GetTitle()
@@ -1657,7 +1729,7 @@ if ( !IsAlive( titan ) )
 return
 if ( titan.GetTitanSoul().IsDoomed() )
 {
-wait 2
+wait 0.8
 if( !IsValid( titan ) )
 return
 
@@ -1717,7 +1789,7 @@ entity function NpcTitanBecomesPilot( entity titan )
 		return
 	titanSoul.soul.seatedNpcPilot.isValid = false
 
-	string weapon 			= titanSoul.soul.seatedNpcPilot.weapon
+	array <string> weapon 	= titanSoul.soul.seatedNpcPilot.weapon
 	asset model 			= titanSoul.soul.seatedNpcPilot.modelAsset
 	string title 			= titanSoul.soul.seatedNpcPilot.title
 	int team 				= titanSoul.soul.seatedNpcPilot.team
@@ -1736,10 +1808,11 @@ entity function NpcTitanBecomesPilot( entity titan )
     //pilot.SetModel($"models/humans/pilots/pilot_medium_geist_f.mdl")
 
 	// modified here: to make npc spawn longer hardcoded
-	SetSpawnOption_Weapon( pilot, weapon )
+	//SetSpawnOption_Weapon( pilot, weapon )
 	DispatchSpawn( pilot )
 	thread PilotMiniMap( pilot )
-	thread PilotSpeedFlagsAndHP( pilot )
+	thread PilotSpeedFlagsHPAndBehavior( pilot )
+	thread NpcPilotCallTitanThink( pilot )
 	// hardcoded
 	pilot.kv.WeaponProficiency = proficiency
 	pilot.kv.AccuracyMultiplier = accuracy
@@ -1748,6 +1821,11 @@ entity function NpcTitanBecomesPilot( entity titan )
 	pilot.SetTitle( title )
 	titan.SetTitle( pilot.GetTitle() + "'s Auto-Titan" )
 	pilot.SetModel( model ) // this is a hack, trying to avoid having a model spawn option because its easy to abuse
+	TakeWeaponsForArray( pilot, pilot.GetMainWeapons() )
+	foreach( string newweapons in weapon )
+	{
+	pilot.GiveWeapon( newweapons )
+	}
 	
 	// these setup should be moved to callbacks, don't handle in this file
 	//pilot.EnableNPCFlag( NPC_ALLOW_PATROL | NPC_ALLOW_INVESTIGATE | NPC_ALLOW_FLEE ) // this one is hardcoded, can change it through callbacks
