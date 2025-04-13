@@ -361,7 +361,6 @@ if( entclass == "npc_spectre" )
 points = 2
 if( entclass == "npc_soldier" )
 points = 1
-print( "NPCPilot Got A Kill" )
 int originalpointscount = 0 // Crash Fix
 if ( attacker in file.titanready )
 originalpointscount = file.titanready[ attacker ]
@@ -372,8 +371,6 @@ if ( !( attacker in file.titanready ) )
 file.titanready[ attacker ] <- newpointscount
 else
 file.titanready[ attacker ] = newpointscount
-print( originalpointscount )
-print( newpointscount )
 }
 
 void function MarkTitanForNPCPilotKill( entity ent, entity attacker, string entclass )
@@ -383,13 +380,13 @@ attacker.EndSignal( "OnDeath" ) // Stop The Script When The Attacker Dies
 ent.EndSignal( "NPCPilotHitTheTitan" ) // We Don't Want Multiple Instances Of This
 ent.EndSignal( "DisembarkingTitan" )
 bool MarkedTitanIsPlayer = false
-float MarkedTitanTime = 10 // Wait 10 Seconds
+float MarkedTitanTime = 10.0 // Wait 10.0 Seconds
 entity bossPlayer
 if( ent.IsPlayer() )
 MarkedTitanIsPlayer = true
 if( !ent.IsPlayer() )
 bossPlayer = ent.GetBossPlayer()
- while( true ) // Infinite Loop
+ while( MarkedTitanTime != 0.0 )
  {
   wait 0.1 // Wait 0.1 Seconds
   if( IsValid( bossPlayer ) )
@@ -415,6 +412,9 @@ bossPlayer = ent.GetBossPlayer()
   TitanDiedWhileMarked( ent, attacker, entclass, MarkedTitanIsPlayer )
   return
   }
+  MarkedTitanTime = MarkedTitanTime - 0.1
+  if( MarkedTitanTime < 0.0 )
+  MarkedTitanTime = 0.0
  }
 }
 
