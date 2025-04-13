@@ -2114,10 +2114,7 @@ function __WaitforTitanCallinReady( entity pilot )
 		 if ( pilot in file.titanready ) // If Pilot Isn't In titanready The Server Crashes
 		 {
           if( file.titanready[ pilot ] == 10 )
-		  {
-		  delete file.titanready[ pilot ]
 		  return
-		  }
 		 }
 		}
 }
