@@ -46,6 +46,11 @@ global struct NPCPilotStruct
 	bool isInvulnerable
 }
 
+struct
+{
+table<entity, int> titanready // Based On Titan Kills Original Titanfall Devs Were Gonna Do This Before It Was Scrapped
+}file
+
 struct TitanEjectDamage
 {
 	int damage
@@ -73,8 +78,8 @@ struct TitanNukeDamage
 }
 
 const NPC_NEXT_TITANTIME_RESET = -1
-const NPC_NEXT_TITANTIME_MIN = 30
-const NPC_NEXT_TITANTIME_MAX = 60
+const NPC_NEXT_TITANTIME_MIN = 30 // Unused Now
+const NPC_NEXT_TITANTIME_MAX = 60 // Unused Now
 const NPC_NEXT_TITANTIME_INTERUPT = 15
 const TITAN_PLAYEREJECT_DELAY = 0.4
 const TITAN_PLAYEREJECT_DURATION = 0.8 // long enough foranimation
@@ -87,10 +92,18 @@ function AiPilots_Init()
 	RegisterSignal( "NpcTitanBecomesPilot" )
 	RegisterSignal( "StopCallTitanThink" )
 	RegisterSignal( "NpcTitanRespawnAvailableUpdated" )
+	RegisterSignal( "NPCPilotHitTheTitan" )
 	AddSpawnCallback( "npc_pilot_elite", CaptainThink )
 	AddDamageFinalCallback( "player", PilotTitanExecution )
 	AddDamageFinalCallback( "npc_titan", PilotTitanExecution ) // titan execution :D
 	AddDamageCallbackSourceID( eDamageSourceId.auto_titan_melee, ApplyNormalMeleeIdToNPCTitan )
+	AddDamageFinalCallback( "npc_titan", NPCPilotGetsKill ) // Titanfall Based On Kills :D
+	AddDamageFinalCallback( "player", NPCPilotGetsKill )
+	AddDamageFinalCallback( "npc_pilot_elite", NPCPilotGetsKill )
+	AddDamageFinalCallback( "npc_spectre", NPCPilotGetsKill )
+	AddDamageFinalCallback( "npc_soldier", NPCPilotGetsKill )
+	AddDamageFinalCallback( "npc_stalker", NPCPilotGetsKill )
+	AddDamageFinalCallback( "npc_super_spectre", NPCPilotGetsKill )
 
 	level.onNpcPilotBecomesTitanCallbacks	<- []
 	level.onNpcTitanBecomesPilotCallbacks	<- []
@@ -306,6 +319,147 @@ if( attacker.GetTitanSoul().soul.seatedNpcPilot.isValid )
 DamageInfo_SetDamageSourceIdentifier( damageInfo, eDamageSourceId.melee_titan_punch )
 return
 }
+}
+
+void function NPCPilotGetsKill( entity ent, var damageInfo )
+{
+entity attacker = DamageInfo_GetAttacker( damageInfo )
+if( !IsValid( attacker ) )
+return
+if( !IsAlive( attacker ) )
+return
+if( attacker.GetClassName() != "npc_pilot_elite" )
+return
+if( IsValid( NpcPilotGetPetTitan( attacker ) ) ) // Don't Allow Kills If The Pilot Has A Titan
+return
+string entclass = ent.GetClassName()
+ if( CanSurviveDamage( ent, damageInfo ) )
+ {
+  if( ent.IsTitan() )
+  {
+  ent.Signal( "NPCPilotHitTheTitan" )
+  thread MarkTitanForNPCPilotKill( ent, attacker, entclass )
+  }
+ return
+ }
+ if( ent.IsPlayer() && ent.IsTitan() )
+ {
+ thread RunNPCPilotGetsKill( ent, attacker, entclass, true )
+ return
+ }
+thread RunNPCPilotGetsKill( ent, attacker, entclass, false )
+}
+
+void function RunNPCPilotGetsKill( entity ent, entity attacker, string entclass, bool PlayerWasTitan )
+{
+int points = 0
+if( entclass == "npc_pilot_elite" || entclass == "player" || entclass == "npc_super_spectre" )
+points = 5
+if( entclass == "npc_titan" || PlayerWasTitan == true )
+points = 10
+if( entclass == "npc_stalker" )
+points = 3
+if( entclass == "npc_spectre" )
+points = 2
+if( entclass == "npc_soldier" )
+points = 1
+print( "NPCPilot Got A Kill" )
+int originalpointscount = 0 // Crash Fix
+if ( attacker in file.titanready )
+originalpointscount = file.titanready[ attacker ]
+int newpointscount = originalpointscount + points
+if( newpointscount > 10 )
+newpointscount = 10 // Cap To 10 Points So I Don't Have To Do More Coding
+if ( !( attacker in file.titanready ) )
+file.titanready[ attacker ] <- newpointscount
+else
+file.titanready[ attacker ] = newpointscount
+print( originalpointscount )
+print( newpointscount )
+}
+
+void function MarkTitanForNPCPilotKill( entity ent, entity attacker, string entclass )
+{
+attacker.EndSignal( "OnDestroy" )
+attacker.EndSignal( "OnDeath" ) // Stop The Script When The Attacker Dies
+ent.EndSignal( "NPCPilotHitTheTitan" ) // We Don't Want Multiple Instances Of This
+ent.EndSignal( "DisembarkingTitan" )
+bool MarkedTitanIsPlayer = false
+float MarkedTitanTime = 10 // Wait 10 Seconds
+entity bossPlayer
+if( ent.IsPlayer() )
+MarkedTitanIsPlayer = true
+if( !ent.IsPlayer() )
+bossPlayer = ent.GetBossPlayer()
+ while( true ) // Infinite Loop
+ {
+  wait 0.1 // Wait 0.1 Seconds
+  if( IsValid( bossPlayer ) )
+  {
+   if( IsAlive( bossPlayer ) )
+   {
+   if( bossPlayer.IsTitan() )
+   return
+   }
+  }
+  if( !IsValid( ent ) )
+  {
+  TitanDiedWhileMarked( ent, attacker, entclass, MarkedTitanIsPlayer )
+  return
+  }
+  if( !IsAlive( ent ) )
+  {
+  TitanDiedWhileMarked( ent, attacker, entclass, MarkedTitanIsPlayer )
+  return
+  }
+  if( !ent.IsTitan() )
+  {
+  TitanDiedWhileMarked( ent, attacker, entclass, MarkedTitanIsPlayer )
+  return
+  }
+ }
+}
+
+void function TitanDiedWhileMarked( entity ent, entity attacker, string entclass, bool PlayerWasTitan )
+{
+thread RunNPCPilotGetsKill( ent, attacker, entclass, PlayerWasTitan )
+}
+
+bool function CanSurviveDamage( entity ent, var damageInfo )
+{
+    // force kill damage -- health is never valid
+    if ( DamageInfo_GetForceKill( damageInfo ) )
+        return false
+
+    int health = ent.GetHealth()
+	if( ent.IsTitan() )
+	{
+	entity entsoul = ent.GetTitanSoul()
+	if( IsValid( entsoul ) )
+	health = health + entsoul.GetShieldHealth()
+	}
+	int damage = int( DamageInfo_GetDamage( damageInfo ) )
+	int healthminusdamage = health - damage
+	if( healthminusdamage > 0 )
+	return true
+    
+	if( ent.IsTitan() )
+	{
+	 if( GetDoomedState( ent ) )
+	 {
+	 if( healthminusdamage <= 0 )
+	 return false
+	 }
+	 entity entsoul = ent.GetTitanSoul()
+	 if( IsValid( entsoul ) )
+	 {
+	 if ( entsoul.soul.skipDoomState == true )
+	 return false
+	 }
+	return true
+	}
+
+    return false
 }
 
 void function PilotTitanExecution( entity ent, var damageInfo )
@@ -1952,8 +2106,20 @@ function __WaitforTitanCallinReady( entity pilot )
 	pilot.EndSignal( "OnDestroy" )
 
 	//HACK TODO: handle eTitanAvailability.Default vs custom and none, AND ALSO make a way to kill this thread
-		float waittheydontloveyoulikeiloveyou = RandomFloatRange( NPC_NEXT_TITANTIME_MIN, NPC_NEXT_TITANTIME_MAX )
-		wait waittheydontloveyoulikeiloveyou
+		//float waittheydontloveyoulikeiloveyou = RandomFloatRange( NPC_NEXT_TITANTIME_MIN, NPC_NEXT_TITANTIME_MAX )
+		//wait waittheydontloveyoulikeiloveyou // Removed
+		while( true )
+		{
+		 WaitFrame()
+		 if ( pilot in file.titanready ) // If Pilot Isn't In titanready The Server Crashes
+		 {
+          if( file.titanready[ pilot ] == 10 )
+		  {
+		  delete file.titanready[ pilot ]
+		  return
+		  }
+		 }
+		}
 }
 
 function __TitanKneelsForPilot( pilot, titan )
