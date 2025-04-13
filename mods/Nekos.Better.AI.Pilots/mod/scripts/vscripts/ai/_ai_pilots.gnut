@@ -330,8 +330,6 @@ if( !IsAlive( attacker ) )
 return
 if( attacker.GetClassName() != "npc_pilot_elite" )
 return
-if( IsValid( NpcPilotGetPetTitan( attacker ) ) ) // Don't Allow Kills If The Pilot Has A Titan
-return
 string entclass = ent.GetClassName()
  if( CanSurviveDamage( ent, damageInfo ) )
  {
