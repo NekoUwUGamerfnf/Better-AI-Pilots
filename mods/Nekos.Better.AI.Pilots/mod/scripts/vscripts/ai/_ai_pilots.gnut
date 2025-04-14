@@ -48,7 +48,7 @@ global struct NPCPilotStruct
 
 struct
 {
-table<entity, int> titanready // Based On Titan Kills Original Titanfall Devs Were Gonna Do This Before It Was Scrapped
+table<entity, int> titanready // Based On Pilots Kills Original Titanfall Devs Were Gonna Do This Before It Was Scrapped
 }file
 
 struct TitanEjectDamage
