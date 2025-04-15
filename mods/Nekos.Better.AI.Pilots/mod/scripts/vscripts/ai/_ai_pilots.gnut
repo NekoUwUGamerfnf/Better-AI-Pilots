@@ -485,7 +485,7 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 				if( GetDoomedState( ent ) && !SoulHasPassive( soul, ePassives.PAS_AUTO_EJECT ) && !ent.IsPhaseShifted() && TitanCanSurviveDamage( ent, damageInfo ) )
 				{
 					vector attackerStartingAngles = attacker.GetAngles()
-					thread PilotTitanExecution_DamageEnemy( ent, damageInfo )
+					PilotTitanExecution_DamageEnemy( ent, damageInfo )
 					DamageInfo_SetDamage( damageInfo, 0 )
 					thread PilotTitanExecution_Wait( attacker, attackerStartingAngles, attacker.IsInvulnerable() )
 					waitthread PlayerTriesSyncedMelee( attacker, ent )
@@ -497,6 +497,7 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 
 void function PilotTitanExecution_DamageEnemy( entity ent, var damageInfo )
 {
+ent.SetInvulnerable()
 entity soul = ent.GetTitanSoul()
 if( !IsValid( soul ) )
 return
@@ -517,6 +518,7 @@ int titanhealthdamaged = titanhealth - newdamage
 if( titanhealthdamaged <= 0 )
 titanhealthdamaged = 1
 ent.SetHealth( titanhealthdamaged )
+ent.ClearInvulnerable()
 }
 
 bool function TitanCanSurviveDamage( entity titan, var damageInfo )
