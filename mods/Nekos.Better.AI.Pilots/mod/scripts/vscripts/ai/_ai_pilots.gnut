@@ -1796,6 +1796,8 @@ function NpcPilotEmbarksTitan( entity pilot, entity titan )
 	if ( IsCloaked( pilot ) )
 		pilot.SetCloakDuration( 0, 0, 1.5 )
 
+	if( pilot.IsInvulnerable() )
+	titan.SetInvulnerable()
 	pilot.SetInvulnerable()
 	pilot.Anim_Stop()
 	thread FirstPersonSequence( sequence, pilot, titan )
