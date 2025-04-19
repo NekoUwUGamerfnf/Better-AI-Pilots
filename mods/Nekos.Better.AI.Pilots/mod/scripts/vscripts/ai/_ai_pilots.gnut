@@ -97,13 +97,7 @@ function AiPilots_Init()
 	AddDamageFinalCallback( "player", PilotTitanExecution )
 	AddDamageFinalCallback( "npc_titan", PilotTitanExecution ) // titan execution :D
 	AddDamageCallbackSourceID( eDamageSourceId.auto_titan_melee, ApplyNormalMeleeIdToNPCTitan )
-	AddDamageFinalCallback( "npc_titan", NPCPilotGetsKill ) // Titanfall Based On Kills :D
-	AddDamageFinalCallback( "player", NPCPilotGetsKill )
-	AddDamageFinalCallback( "npc_pilot_elite", NPCPilotGetsKill )
-	AddDamageFinalCallback( "npc_spectre", NPCPilotGetsKill )
-	AddDamageFinalCallback( "npc_soldier", NPCPilotGetsKill )
-	AddDamageFinalCallback( "npc_stalker", NPCPilotGetsKill )
-	AddDamageFinalCallback( "npc_super_spectre", NPCPilotGetsKill )
+	AddDamageByCallback( "npc_pilot_elite", NPCPilotGetsKill ) // Titanfall Based On Kills :D
 
 	level.onNpcPilotBecomesTitanCallbacks	<- []
 	level.onNpcTitanBecomesPilotCallbacks	<- []
@@ -228,12 +222,60 @@ void function threadCaptainThink( entity npc )
 	thread RandomPilotModel( npc )
 }
 
+void function OnFlagChanged( entity npc, array <int> flags, bool disable = false, bool istitan = false, bool isvalidpilot = false )
+{
+npc.EndSignal( "OnDestroy" )
+npc.EndSignal( "OnDeath" )
+ while ( true )
+ {
+  if( istitan == true )
+  {
+   entity soul = npc.GetTitanSoul()
+   if( IsValid( soul ) )
+   {
+    if( isvalidpilot == true )
+    {
+    if( !( soul.soul.seatedNpcPilot.isValid ) )
+    return
+    }
+	if( isvalidpilot == false )
+    {
+    if( soul.soul.seatedNpcPilot.isValid )
+    return
+    }
+   }
+  }
+  foreach( int flag in flags )
+  {
+   if( disable == false )
+   {
+    if ( !npc.GetNPCFlag( flag ) )
+    {
+    npc.EnableNPCFlag( flag )
+    }
+   }
+   if( disable == true )
+   {
+    if ( npc.GetNPCFlag( flag ) )
+    {
+    npc.DisableNPCFlag( flag )
+    }
+   }
+  }
+ WaitFrame()
+ }
+}
+
 void function PilotSpeedFlagsHPAndBehavior( entity npc )
 {
 npc.SetNPCMoveSpeedScale( 1.25 )
 npc.EnableNPCMoveFlag( NPCMF_PREFER_SPRINT )
-npc.EnableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN | NPC_ALLOW_PATROL | NPC_ALLOW_INVESTIGATE | NPC_IGNORE_FRIENDLY_SOUND )
-npc.DisableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE )
+array <int> flags 
+flags.extend([ NPC_NO_PAIN, NPC_NO_GESTURE_PAIN, NPC_ALLOW_PATROL, NPC_ALLOW_INVESTIGATE, NPC_IGNORE_FRIENDLY_SOUND ])
+thread OnFlagChanged( npc, flags )
+array <int> disableflags 
+disableflags.extend([ NPC_PAIN_IN_SCRIPTED_ANIM, NPC_ALLOW_FLEE ])
+thread OnFlagChanged( npc, disableflags, true )
 npc.SetMaxHealth( 750 )
 npc.SetHealth( 750 )
 npc.SetBehaviorSelector( "behavior_sp_soldier" )
@@ -350,17 +392,15 @@ thread RunNPCPilotGetsKill( ent, attacker, entclass, false )
 
 void function RunNPCPilotGetsKill( entity ent, entity attacker, string entclass, bool PlayerWasTitan )
 {
-int points = 0
-if( entclass == "npc_pilot_elite" || entclass == "player" || entclass == "npc_super_spectre" )
+int points = 1
+if( entclass == "npc_pilot_elite" || entclass == "player" || entclass == "npc_super_spectre" || entclass == "npc_gunship" )
 points = 5
-if( entclass == "npc_titan" || PlayerWasTitan == true )
+if( entclass == "npc_titan" || entclass == "npc_dropship" || PlayerWasTitan == true )
 points = 10
 if( entclass == "npc_stalker" )
 points = 3
 if( entclass == "npc_spectre" )
 points = 2
-if( entclass == "npc_soldier" )
-points = 1
 int originalpointscount = 0 // Crash Fix
 if ( attacker in file.titanready )
 originalpointscount = file.titanready[ attacker ]
@@ -1513,8 +1553,12 @@ void function PilotInTitanSet( entity titan )
 		}
 	titan.SetCapabilityFlag( bits_CAP_SYNCED_MELEE_ATTACK, false )
 	titan.EnableNPCMoveFlag( NPCMF_PREFER_SPRINT )
-	titan.EnableNPCFlag( NPC_NO_PAIN | NPC_NO_GESTURE_PAIN | NPC_ALLOW_PATROL | NPC_ALLOW_INVESTIGATE | NPC_IGNORE_FRIENDLY_SOUND )
-	titan.DisableNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM | NPC_ALLOW_FLEE )
+    array <int> flags 
+    flags.extend([ NPC_NO_PAIN, NPC_NO_GESTURE_PAIN, NPC_ALLOW_PATROL, NPC_ALLOW_INVESTIGATE, NPC_IGNORE_FRIENDLY_SOUND ])
+    thread OnFlagChanged( titan, flags, false, true, true )
+    array <int> disableflags 
+    disableflags.extend([ NPC_PAIN_IN_SCRIPTED_ANIM, NPC_ALLOW_FLEE ])
+    thread OnFlagChanged( titan, disableflags, true, true, true )
 	}
 }
 
