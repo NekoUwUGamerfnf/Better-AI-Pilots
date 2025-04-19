@@ -49,6 +49,7 @@ global struct NPCPilotStruct
 struct
 {
 table<entity, int> titanready // Based On Pilots Kills Original Titanfall Devs Were Gonna Do This Before It Was Scrapped
+table<entity, int> smokecount // Titan Smoke Count
 }file
 
 struct TitanEjectDamage
@@ -714,6 +715,153 @@ function NpcPilotCallTitanThink( entity pilot )
 
 \************************************************************************************************/
 
+void function EmbarkedNPCTitanRodeoCounter( entity titan )
+{
+	thread EmbarkedNPCTitanRodeoCounter_Threaded( titan )
+}
+
+void function EmbarkedNPCTitanRodeoCounter_Threaded( entity titan )
+{
+	entity soul = titan.GetTitanSoul()
+	if ( !IsValid( soul ) )
+		return
+
+	titan.EndSignal( "OnDeath" )
+	titan.EndSignal( "OnDestroy" )
+	soul.EndSignal( "OnDestroy" )
+
+	float beingRodeoedTime = -1
+	float lastTickRodeoHitTime = 0
+	bool hasusedsmoke = false
+
+	while ( true )
+	{
+		WaitFrame() // always wait a frame each loop
+
+		titan = soul.GetTitan() // update titan
+		if( !( soul.soul.seatedNpcPilot.isValid ) ) // npc pilot become invalid!
+		return
+
+		entity rodeoPilot = GetRodeoPilot( titan )
+		float rodeoHitTime = soul.GetLastRodeoHitTime()
+		if ( rodeoHitTime != 0 && lastTickRodeoHitTime == 0 ) // rodeo target updated!
+			beingRodeoedTime = rodeoHitTime
+		else if ( rodeoHitTime == 0 ) // rodeo target detached
+		{
+			beingRodeoedTime = -1
+			hasusedsmoke = false
+		}
+		lastTickRodeoHitTime = rodeoHitTime
+
+		if ( titan.Anim_IsActive() || IsValid( titan.GetParent() ) )
+			continue
+
+		//print( "beingRodeoedTime: " + string( beingRodeoedTime ) )
+		// Rodeo counter: force inventory smoke to fire when getting rodeo hit recently
+		if ( IsAlive( rodeoPilot ) && beingRodeoedTime != -1 )
+		{
+			// delay is enough!
+			if( hasusedsmoke == false )
+			{
+				// team checks: weapons like satchel can trigger friendly rodeo alert...
+				if ( rodeoPilot.GetTeam() == titan.GetTeam() )
+					continue
+
+			    if( rodeoPilot.IsPlayer() )
+			    {
+			    if ( !PlayerHasPassive( rodeoPilot, ePassives.PAS_STEALTH_MOVEMENT ) )
+			    wait 1
+			    }
+					
+					// ammo management
+					int smokeCount = 1
+					bool shoulddosmoke = true
+					if ( titan in file.smokecount )
+					smokeCount = file.smokecount[ titan ]
+					if ( smokeCount == 0 )
+					{
+					smokeCount = 1
+					shoulddosmoke = false
+					}
+					if ( !( titan in file.smokecount ) )
+                    file.smokecount[ titan ] <- smokeCount - 1
+                    else
+                    file.smokecount[ titan ] = smokeCount - 1
+
+					if ( shoulddosmoke == true )
+					{
+					hasusedsmoke = true
+					TitanSmokescreen( titan )
+					}
+			}
+		}
+	}
+}
+
+void function TitanSmokescreen( entity ent )
+{
+	SmokescreenStruct smokescreen
+	array<entity> primaryWeapons = ent.GetMainWeapons()
+	
+	if( !primaryWeapons.len() )
+		return
+		
+	entity maingun = primaryWeapons[0]
+	if ( IsValid( maingun ) && maingun.HasMod( "fd_vanguard_utility_1" ) )
+		smokescreen.smokescreenFX = FX_ELECTRIC_SMOKESCREEN_HEAL
+	smokescreen.isElectric = true
+	smokescreen.ownerTeam = ent.GetTeam()
+	smokescreen.attacker = ent
+	smokescreen.inflictor = ent
+	smokescreen.damageInnerRadius = 320.0
+	smokescreen.damageOuterRadius = 375.0
+	smokescreen.dangerousAreaRadius = 1.0
+	smokescreen.dpsPilot = 45
+	smokescreen.dpsTitan = 450
+	smokescreen.damageDelay = 1.0
+	smokescreen.blockLOS = false
+
+	vector eyeAngles = <0.0, ent.EyeAngles().y, 0.0>
+	smokescreen.angles = eyeAngles
+
+	vector forward = AnglesToForward( eyeAngles )
+	vector testPos = ent.GetOrigin() + forward * 240.0
+	vector basePos = testPos
+
+	float trace = TraceLineSimple( ent.EyePosition(), testPos, ent )
+	if ( trace != 1.0 )
+		basePos = ent.GetOrigin()
+
+	float fxOffset = 200.0
+	float fxHeightOffset = 148.0
+
+	smokescreen.origin = basePos
+
+	smokescreen.fxOffsets = [ < -fxOffset, 0.0, 20.0>,
+							  <0.0, fxOffset, 20.0>,
+							  <0.0, -fxOffset, 20.0>,
+							  <0.0, 0.0, fxHeightOffset>,
+							  < -fxOffset, 0.0, fxHeightOffset> ]
+
+	Smokescreen( smokescreen )
+}
+
+void function GiveTitanSmokeEveryThirtySeconds( entity npc )
+{
+npc.EndSignal( "OnDestroy" )
+npc.EndSignal( "OnDeath" )
+ while( true )
+ {
+ int smokeCount = 0
+ if ( npc in file.smokecount )
+ smokeCount = file.smokecount[ npc ]
+ if ( !( npc in file.smokecount ) )
+ file.smokecount[ npc ] <- smokeCount + 1
+ else
+ file.smokecount[ npc ] = smokeCount + 1
+ wait 30.0
+ }
+}
 
 entity function NpcPilotCallsInAndEmbarksTitan( entity pilot, vector origin, vector angles )
 {
@@ -1515,6 +1663,8 @@ void function PilotInTitanSet( entity titan )
     if( IsValid( titan ) )
 	{
 	thread EjectWhenDoomed( titan )
+	thread GiveTitanSmokeEveryThirtySeconds( titan )
+	thread EmbarkedNPCTitanRodeoCounter( titan )
 	string attackerType = GetTitanCharacterName( titan )
 	switch ( attackerType )
 	    {
