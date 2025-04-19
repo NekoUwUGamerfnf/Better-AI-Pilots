@@ -855,7 +855,7 @@ npc.EndSignal( "OnDeath" )
  int smokeCount = 0
   if ( npc in file.smokecount )
   {
-  while( file.smokecount[ npc ] = 6 )
+  while( file.smokecount[ npc ] == 6 )
   WaitFrame()
   }
  if ( npc in file.smokecount )
