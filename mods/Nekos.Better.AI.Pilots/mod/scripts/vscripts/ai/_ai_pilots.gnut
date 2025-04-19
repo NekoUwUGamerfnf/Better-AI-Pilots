@@ -643,7 +643,6 @@ function NpcPilotCallTitanThink( entity pilot )
 	pilot.Signal( "StopCallTitanThink" )
 	pilot.EndSignal( "StopCallTitanThink" )
 
-	string title = pilot.GetTitle() + "'s Auto-Titan"
 	local count = 1 //1 titan call in at a time
 
 	while ( true ) //this loop usually only happens once, unless the titan called in is destroyed before the living pilot can get to it
@@ -696,7 +695,6 @@ function NpcPilotCallTitanThink( entity pilot )
 			//call in a titan, run to it, and embark
 			//in SP by default, the friendlys do NOT do the beacon tell
 			titan = NpcPilotCallsInAndEmbarksTitan( pilot, spawnPoint.origin, spawnPoint.angles )
-			titan.SetTitle( title )
 		}
 		local result = WaitSignal( titan, "NpcPilotBecomesTitan", "OnDeath", "OnDestroy" )
 		if ( result.signal != "NpcPilotBecomesTitan" )
