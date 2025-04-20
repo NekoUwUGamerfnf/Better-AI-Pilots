@@ -204,23 +204,18 @@ void function threadCaptainThink( entity npc )
 	if ( npc.s.nextTitanRespawnAvailable == null )
 		npc.s.nextTitanRespawnAvailable = RandomFloatRange( NPC_NEXT_TITANTIME_MIN, NPC_NEXT_TITANTIME_MAX )
 
-	WaitEndFrame() //wait a frame for things like petTitan and nextTitanRespawnAvailable to have a chance to be set from custom scripts
+	WaitFrame() //wait a frame for things like petTitan and nextTitanRespawnAvailable to have a chance to be set from custom scripts
 	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
+	{
 	thread RandomPilotWeapon( npc )
-	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	thread RandomPilotName( npc )
-	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	npc.kv.AccuracyMultiplier = 10.0
-	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	npc.kv.WeaponProficiency = eWeaponProficiency.PERFECT
-	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	thread PilotMiniMap( npc )
-	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	thread PilotSpeedFlagsHPAndBehavior( npc )
-	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	thread NpcPilotCallTitanThink( npc )
-	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	thread RandomPilotModel( npc )
+	}
 }
 
 void function OnFlagChanged( entity npc, array <int> flags, bool disable = false, bool istitan = false, bool isvalidpilot = false )
@@ -2042,7 +2037,7 @@ void function NpcPilotBecomesTitan( entity pilot, entity titan )
 
 	titanSoul.soul.seatedNpcPilot.isValid				= true
 
-	titanSoul.soul.seatedNpcPilot.team 					= pilot.GetTeam()
+	//titanSoul.soul.seatedNpcPilot.team 					= pilot.GetTeam()
 	titanSoul.soul.seatedNpcPilot.weapon 				= weaponNames
 
 	titanSoul.soul.seatedNpcPilot.modelAsset 			= pilot.GetModelName()
@@ -2145,20 +2140,16 @@ entity function NpcTitanBecomesPilot( entity titan )
 	array <string> weapon 	= titanSoul.soul.seatedNpcPilot.weapon
 	asset model 			= titanSoul.soul.seatedNpcPilot.modelAsset
 	string title 			= titanSoul.soul.seatedNpcPilot.title
-	int team 				= titanSoul.soul.seatedNpcPilot.team
+	//int team 				= titanSoul.soul.seatedNpcPilot.team
+	int team 				= titan.GetTeam()
 	vector origin 			= titan.GetOrigin()
 	float angles 		    = titan.GetAngles().z
 	float proficiency 		= titanSoul.soul.seatedNpcPilot.proficiency
 	float accuracy 			= titanSoul.soul.seatedNpcPilot.accuracy
 
-	// modified here: to make npc spawn longer hardcoded
-	//entity pilot 			= CreateElitePilot( team, origin, angles )
-	//entity pilot 			= CreateNPC( "npc_pilot_elite", team, origin, angles )
-	entity pilot 			= CreateNPC( "npc_pilot_elite", team, origin, angles )
-	
-	// update to default model
-	// this is hardcoded!! removing
-    //pilot.SetModel($"models/humans/pilots/pilot_medium_geist_f.mdl")
+	entity pilot = CreateEntity( "npc_pilot_elite" )
+	pilot.SetOrigin( origin )
+	SetTeam( pilot, team )
 
 	// modified here: to make npc spawn longer hardcoded
 	//SetSpawnOption_Weapon( pilot, weapon )
