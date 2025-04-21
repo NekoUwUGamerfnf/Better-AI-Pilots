@@ -97,6 +97,10 @@ function AiPilots_Init()
 	AddSpawnCallback( "npc_pilot_elite", CaptainThink )
 	AddDamageFinalCallback( "player", PilotTitanExecution )
 	AddDamageFinalCallback( "npc_titan", PilotTitanExecution ) // titan execution :D
+	AddDamageFinalCallback( "npc_titan", NPCNOPAIN )
+	AddPostDamageCallback( "npc_titan", NPCNOPAIN )
+	AddDamageFinalCallback( "npc_pilot_elite", NPCNOPAIN )
+	AddPostDamageCallback( "npc_pilot_elite", NPCNOPAIN )
 	AddDamageCallbackSourceID( eDamageSourceId.auto_titan_melee, ApplyNormalMeleeIdToNPCTitan )
 	AddDamageByCallback( "npc_pilot_elite", NPCPilotGetsKill ) // Titanfall Based On Kills :D
 
@@ -323,6 +327,23 @@ pilotminimap.Destroy()
 return
 }
 WaitFrame()
+ }
+}
+
+void function NPCNOPAIN( entity npc, var damageInfo )
+{
+ if( npc.GetNPCFlag( NPC_NO_PAIN ) || !npc.GetNPCFlag( NPC_PAIN_IN_SCRIPTED_ANIM ) )
+ {
+  if( !npc.IsTitan() )
+  DamageInfo_AddDamageFlags( damageInfo, DAMAGEFLAG_NOPAIN )
+  if( npc.IsTitan() )
+  {
+  entity soul = npc.GetTitanSoul()
+  if( !IsValid( soul ) )
+  return
+  if( soul.soul.seatedNpcPilot.isValid )
+  DamageInfo_AddDamageFlags( damageInfo, DAMAGEFLAG_NOPAIN )
+  }
  }
 }
 
