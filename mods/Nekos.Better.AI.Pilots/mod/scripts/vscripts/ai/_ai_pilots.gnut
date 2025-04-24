@@ -390,13 +390,12 @@ return
 if( attacker.GetClassName() != "npc_pilot_elite" )
 return
 string entclass = ent.GetClassName()
+if( ent.IsTitan() )
+ent.Signal( "NPCPilotHitTheTitan" )
  if( CanSurviveDamage( ent, damageInfo ) )
  {
-  if( ent.IsTitan() )
-  {
-  ent.Signal( "NPCPilotHitTheTitan" )
-  thread MarkTitanForNPCPilotKill( ent, attacker, entclass )
-  }
+ if( ent.IsTitan() )
+ thread MarkTitanForNPCPilotKill( ent, attacker, entclass )
  return
  }
  if( ent.IsPlayer() && ent.IsTitan() )
