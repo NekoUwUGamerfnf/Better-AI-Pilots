@@ -1,7 +1,16 @@
 {
-	"Name" : "Neko's Better AI Pilots",
-	"Description" : "Give AI Pilots Titans",
+	"Name": "Neko's Better AI Pilots",
+	"Description": "Give AI Pilots Titans",
 	"Version": "1.0.0",
 	"LoadPriority": 20,
 	"RequiredOnClient": false,
+	"Dependencies": {
+		"AIRBORNE_EXECUTIONS_THING": "Airborne Executions"
+	},
+	"Scripts": [
+		{
+			"Path": "karma_airborne_execution_betteraipilots.nut",
+			"RunOn": "CLIENT || SERVER"
+		}
+	]
 }

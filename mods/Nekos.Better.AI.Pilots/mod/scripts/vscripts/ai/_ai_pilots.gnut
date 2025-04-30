@@ -1969,8 +1969,10 @@ function NpcPilotEmbarksTitan( entity pilot, entity titan )
 	pilot.SetInvulnerable()
 	pilot.Anim_Stop()
 	thread FirstPersonSequence( sequence, pilot, titan )
-	thread PlayAnimGravity( titan, titanAnim )
-	WaittillAnimDone( titan )
+	array <int> nopain
+	nopain.append( NPC_NO_PAIN )
+	thread OnFlagChanged( titan, nopain, false, true, false )
+	waitthread PlayAnimGravity( titan, titanAnim )
 	SetStanceStand( titan.GetTitanSoul() )
 	NpcPilotBecomesTitan( pilot, titan )
 }
