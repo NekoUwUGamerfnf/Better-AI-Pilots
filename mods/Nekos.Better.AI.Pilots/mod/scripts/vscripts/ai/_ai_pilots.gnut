@@ -121,7 +121,6 @@ function AiPilots_Init()
 	RegisterSignal( "NpcTitanBecomesPilot" )
 	RegisterSignal( "StopCallTitanThink" )
 	RegisterSignal( "NpcTitanRespawnAvailableUpdated" )
-	RegisterSignal( "NPCPilotHitTheTitan" )
 	AddSpawnCallback( "npc_pilot_elite", CaptainThink )
 	AddDamageFinalCallback( "player", PilotTitanExecution )
 	AddDamageFinalCallback( "npc_titan", PilotTitanExecution ) // titan execution :D
@@ -130,7 +129,9 @@ function AiPilots_Init()
 	AddDamageFinalCallback( "npc_pilot_elite", NPCNOPAIN )
 	AddPostDamageCallback( "npc_pilot_elite", NPCNOPAIN )
 	AddDamageCallbackSourceID( eDamageSourceId.auto_titan_melee, ApplyNormalMeleeIdToNPCTitan )
-	AddDamageByCallback( "npc_pilot_elite", NPCPilotGetsKill ) // Titanfall Based On Kills :D
+	AddCallback_OnNPCKilled( NPCPilotGetsKill ) // Titanfall Based On Kills :D
+    AddCallback_OnPlayerKilled( NPCPilotGetsKill )
+	AddDamageFinalCallback( "npc_pilot_elite", NPCPilotDamageAdjustments )
 
 	level.onNpcPilotBecomesTitanCallbacks	<- []
 	level.onNpcTitanBecomesPilotCallbacks	<- []
@@ -407,38 +408,33 @@ return
 }
 }
 
-void function NPCPilotGetsKill( entity ent, var damageInfo )
+void function NPCPilotGetsKill( entity ent, entity attacker, var damageInfo )
 {
-entity attacker = DamageInfo_GetAttacker( damageInfo )
 if( !IsValid( attacker ) )
 return
 if( !IsAlive( attacker ) )
 return
+if( attacker.GetTeam() == ent.GetTeam() )
+return
+if( attacker.IsPlayer() )
+return
+if( !attacker.IsNPC() )
+return
 if( attacker.GetClassName() != "npc_pilot_elite" )
 return
 string entclass = ent.GetClassName()
-if( ent.IsTitan() )
-ent.Signal( "NPCPilotHitTheTitan" )
- if( CanSurviveDamage( ent, damageInfo ) )
- {
- if( ent.IsTitan() )
- thread MarkTitanForNPCPilotKill( ent, attacker, entclass )
- return
- }
- if( ent.IsPlayer() && ent.IsTitan() )
- {
- thread RunNPCPilotGetsKill( ent, attacker, entclass, true )
- return
- }
-thread RunNPCPilotGetsKill( ent, attacker, entclass, false )
+bool PlayerWasTitan = false
+if( ent.IsPlayer() && ent.IsTitan() )
+PlayerWasTitan = true
+thread RunNPCPilotGetsKill( ent, attacker, entclass, PlayerWasTitan )
 }
 
 void function RunNPCPilotGetsKill( entity ent, entity attacker, string entclass, bool PlayerWasTitan )
 {
 int points = 1
-if( entclass == "npc_pilot_elite" || entclass == "player" || entclass == "npc_super_spectre" || entclass == "npc_gunship" )
+if( entclass == "npc_pilot_elite" || entclass == "player" || entclass == "npc_super_spectre" || entclass == "npc_dropship" )
 points = 5
-if( entclass == "npc_titan" || entclass == "npc_dropship" || PlayerWasTitan == true )
+if( entclass == "npc_titan" || entclass == "npc_gunship" || PlayerWasTitan == true )
 points = 10
 if( entclass == "npc_stalker" )
 points = 3
@@ -456,91 +452,27 @@ else
 file.titanready[ attacker ] = newpointscount
 }
 
-void function MarkTitanForNPCPilotKill( entity ent, entity attacker, string entclass )
-{
-attacker.EndSignal( "OnDestroy" )
-attacker.EndSignal( "OnDeath" ) // Stop The Script When The Attacker Dies
-ent.EndSignal( "NPCPilotHitTheTitan" ) // We Don't Want Multiple Instances Of This
-ent.EndSignal( "DisembarkingTitan" )
-bool MarkedTitanIsPlayer = false
-float MarkedTitanTime = 10.0 // Wait 10.0 Seconds
-entity bossPlayer
-if( ent.IsPlayer() )
-MarkedTitanIsPlayer = true
-if( !ent.IsPlayer() )
-bossPlayer = ent.GetBossPlayer()
- while( MarkedTitanTime != 0.0 )
- {
-  wait 0.1 // Wait 0.1 Seconds
-  if( IsValid( bossPlayer ) )
-  {
-   if( IsAlive( bossPlayer ) )
-   {
-   if( bossPlayer.IsTitan() )
-   return
-   }
-  }
-  if( !IsValid( ent ) )
-  {
-  TitanDiedWhileMarked( ent, attacker, entclass, MarkedTitanIsPlayer )
-  return
-  }
-  if( !IsAlive( ent ) )
-  {
-  TitanDiedWhileMarked( ent, attacker, entclass, MarkedTitanIsPlayer )
-  return
-  }
-  if( !ent.IsTitan() )
-  {
-  TitanDiedWhileMarked( ent, attacker, entclass, MarkedTitanIsPlayer )
-  return
-  }
-  MarkedTitanTime = MarkedTitanTime - 0.1
-  if( MarkedTitanTime < 0.0 )
-  MarkedTitanTime = 0.0
- }
-}
+void function NPCPilotDamageAdjustments( entity pilot, var damageInfo )
+{	
+	if ( IsInstantDeath( damageInfo ) || DamageInfo_GetForceKill( damageInfo ) ) // force kill damage( trigger_hurt, executions ) shouldn't be handled
+		return
 
-void function TitanDiedWhileMarked( entity ent, entity attacker, string entclass, bool PlayerWasTitan )
-{
-thread RunNPCPilotGetsKill( ent, attacker, entclass, PlayerWasTitan )
-}
+	int damageSourceID = DamageInfo_GetDamageSourceIdentifier( damageInfo )
+	int damageType = DamageInfo_GetCustomDamageType( damageInfo )
+	entity attacker = DamageInfo_GetAttacker( damageInfo )
+	if ( !IsValid( attacker ) )
+		return
 
-bool function CanSurviveDamage( entity ent, var damageInfo )
-{
-    // force kill damage -- health is never valid
-    if ( DamageInfo_GetForceKill( damageInfo ) )
-        return false
-
-    int health = ent.GetHealth()
-	if( ent.IsTitan() )
+	int dpsTaken = int( GetTotalDamageTakenInTime( pilot, 1.0 ) )
+	int maxDPSTaken = 300
+	if ( dpsTaken >= maxDPSTaken )
+		DamageInfo_SetDamage( damageInfo, 0 )
+	else
 	{
-	entity entsoul = ent.GetTitanSoul()
-	if( IsValid( entsoul ) )
-	health = health + entsoul.GetShieldHealth()
+		int maxDamage = maxDPSTaken - dpsTaken
+		int currentDamage = int( DamageInfo_GetDamage( damageInfo ) )
+		DamageInfo_SetDamage( damageInfo, min( currentDamage, maxDamage ) )
 	}
-	int damage = int( DamageInfo_GetDamage( damageInfo ) )
-	int healthminusdamage = health - damage
-	if( healthminusdamage > 0 )
-	return true
-    
-	if( ent.IsTitan() )
-	{
-	 if( GetDoomedState( ent ) )
-	 {
-	 if( healthminusdamage <= 0 )
-	 return false
-	 }
-	 entity entsoul = ent.GetTitanSoul()
-	 if( IsValid( entsoul ) )
-	 {
-	 if ( entsoul.soul.skipDoomState == true )
-	 return false
-	 }
-	return true
-	}
-
-    return false
 }
 
 void function PilotTitanExecution( entity ent, var damageInfo )
