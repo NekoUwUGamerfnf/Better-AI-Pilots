@@ -50,6 +50,34 @@ struct
 {
 table<entity, int> titanready // Based On Pilots Kills Original Titanfall Devs Were Gonna Do This Before It Was Scrapped
 table<entity, int> smokecount // Titan Smoke Count
+array<string> pilotweapons = [
+"mp_weapon_rspn101_og",
+"mp_weapon_r97",
+"mp_weapon_car",
+"mp_weapon_vinson",
+"mp_weapon_epg",
+"mp_weapon_smr",
+"mp_weapon_lmg",
+"mp_weapon_g2",
+"mp_weapon_rspn101",
+"mp_weapon_car",
+"mp_weapon_hemlok",
+"mp_weapon_lstar",
+"mp_weapon_hemlok_smg"
+]
+array<string> pilotantititanweapons = [
+"mp_weapon_arc_launcher",
+"mp_weapon_rocket_launcher",
+"mp_weapon_defender"
+]
+array<asset> pilotmodels = [
+$"models/humans/pilots/pilot_medium_geist_m.mdl",
+$"models/humans/pilots/pilot_medium_geist_f.mdl",
+$"models/humans/pilots/pilot_medium_stalker_m.mdl",
+$"models/humans/pilots/pilot_medium_stalker_f.mdl",
+$"models/humans/pilots/pilot_medium_reaper_m.mdl",
+$"models/humans/pilots/pilot_medium_reaper_f.mdl"
+]
 }file
 
 struct TitanEjectDamage
@@ -279,7 +307,6 @@ thread OnFlagChanged( npc, disableflags, true )
 npc.SetMaxHealth( 750 )
 npc.SetHealth( 750 )
 npc.SetBehaviorSelector( "behavior_sp_soldier" )
-npc.SetCapabilityFlag( bits_CAP_INNATE_MELEE_ATTACK1, false ) // Melee Is Broken
 npc.SetEnemyChangeCallback( OnNPCPilotEnemyChange )
 }
 
@@ -816,14 +843,7 @@ void function EmbarkedNPCTitanRodeoCounter_Threaded( entity titan )
 void function TitanSmokescreen( entity ent )
 {
 	SmokescreenStruct smokescreen
-	array<entity> primaryWeapons = ent.GetMainWeapons()
-	
-	if( !primaryWeapons.len() )
-		return
 		
-	entity maingun = primaryWeapons[0]
-	if ( IsValid( maingun ) && maingun.HasMod( "fd_vanguard_utility_1" ) )
-		smokescreen.smokescreenFX = FX_ELECTRIC_SMOKESCREEN_HEAL
 	smokescreen.isElectric = true
 	smokescreen.ownerTeam = ent.GetTeam()
 	smokescreen.attacker = ent
@@ -1204,9 +1224,7 @@ void function NPCPrespawnWarpfallSequenceModded( string aiSettings, vector spawn
 
 array<string> function RandomPilotName( pilot ) 
 {
-array<string> RandomPilotNames
-RandomPilotNames.extend(
-[
+array<string> RandomPilotNames = [
     "ShadowRider", "TitanVanguard", "StormBreaker", "IronFist", "NebulaKnight", "PhantomEcho", 
     "SteelFury", "NovaViper", "ThunderClash", "VortexAlpha", "IronSentinel", "GhostReaper", 
     "DeathPulse", "TechnoHunter", "SkyReaper", "ScorchedEarth", "BlazeStorm", "DarkRaven", 
@@ -1255,7 +1273,6 @@ RandomPilotNames.extend(
     "VortexTitanX", "PlasmaWardenX", "TitanHunterX", "TitanWraithVanguard", "OmegaPhantom", 
     "VortexWarden", "TitanGhostX", "FrostTitanX", "BlazeFuryVanguard", "SpecterTitanX", "RogueTitanX"
 ]
-)
 pilot.SetTitle( "[BOT]" + RandomPilotNames.getrandom() )
 return RandomPilotNames
 }
@@ -1263,57 +1280,13 @@ return RandomPilotNames
 void function RandomPilotWeapon( entity pilot )
 {
 TakeWeaponsForArray( pilot, pilot.GetMainWeapons() )
-int randompilotweapon = RandomIntRange( 0, 13 )
-if ( randompilotweapon == 0 )
-pilot.GiveWeapon( "mp_weapon_rspn101_og" )
-if ( randompilotweapon == 1 )
-pilot.GiveWeapon( "mp_weapon_r97" )
-if ( randompilotweapon == 2 )
-pilot.GiveWeapon( "mp_weapon_car" )
-if ( randompilotweapon == 3 )
-pilot.GiveWeapon( "mp_weapon_vinson" )
-if ( randompilotweapon == 4 )
-pilot.GiveWeapon( "mp_weapon_epg" )
-if ( randompilotweapon == 5 )
-pilot.GiveWeapon( "mp_weapon_smr" )
-if ( randompilotweapon == 6 )
-pilot.GiveWeapon( "mp_weapon_lmg" )
-if ( randompilotweapon == 7 )
-pilot.GiveWeapon( "mp_weapon_g2" )
-if ( randompilotweapon == 8 )
-pilot.GiveWeapon( "mp_weapon_rspn101" )
-if ( randompilotweapon == 9 )
-pilot.GiveWeapon( "mp_weapon_car" )
-if ( randompilotweapon == 10 )
-pilot.GiveWeapon( "mp_weapon_hemlok" )
-if ( randompilotweapon == 11 )
-pilot.GiveWeapon( "mp_weapon_lstar" )
-if ( randompilotweapon == 12 )
-pilot.GiveWeapon( "mp_weapon_hemlok_smg" )
-int randompilotantititanweapon = RandomIntRange( 0, 3 )
-if ( randompilotantititanweapon == 0 )
-pilot.GiveWeapon( "mp_weapon_arc_launcher" )
-if ( randompilotantititanweapon == 1 )
-pilot.GiveWeapon( "mp_weapon_rocket_launcher" )
-if ( randompilotantititanweapon == 2 )
-pilot.GiveWeapon( "mp_weapon_defender" )
+pilot.GiveWeapon( file.pilotweapons.getrandom() )
+pilot.GiveWeapon( file.pilotantititanweapons.getrandom() )
 }
 
 void function RandomPilotModel( entity pilot )
 {
-int randompilotmodel = RandomIntRange( 0, 6 )
-if ( randompilotmodel == 0 )
-pilot.SetModel( $"models/humans/pilots/pilot_medium_geist_m.mdl" )
-if ( randompilotmodel == 1 )
-pilot.SetModel( $"models/humans/pilots/pilot_medium_geist_f.mdl" )
-if ( randompilotmodel == 2 )
-pilot.SetModel( $"models/humans/pilots/pilot_medium_stalker_m.mdl" )
-if ( randompilotmodel == 3 )
-pilot.SetModel( $"models/humans/pilots/pilot_medium_stalker_f.mdl" )
-if ( randompilotmodel == 4 )
-pilot.SetModel( $"models/humans/pilots/pilot_medium_reaper_m.mdl" )
-if ( randompilotmodel == 5 )
-pilot.SetModel( $"models/humans/pilots/pilot_medium_reaper_f.mdl" )
+pilot.SetModel( file.pilotmodels.getrandom() )
 }
 
 void function OnNPCPilotEnemyChange( entity guy )
