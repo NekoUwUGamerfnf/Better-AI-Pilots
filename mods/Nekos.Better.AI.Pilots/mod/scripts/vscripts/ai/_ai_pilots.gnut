@@ -25,6 +25,15 @@ global function NpcResetNextTitanRespawnAvailable
 global function AddCallback_OnNpcTitanBecomesPilot
 global function AddCallback_OnNpcPilotBecomesTitan
 
+// Custom Functions
+global function GiveTitanAutoEject
+global function RemoveTitanAutoEject
+global function GiveTitanDeathEject
+global function RemoveTitanDeathEject
+global function SpawnPilotInTitan
+global function SpawnPilotWithTitan
+global function SpawnPilot
+
 global struct NPCPilotStruct
 {
 	bool isValid = false
@@ -50,6 +59,8 @@ struct
 {
 table<entity, int> titanready // Based On Pilots Kills Original Titanfall Devs Were Gonna Do This Before It Was Scrapped
 table<entity, int> smokecount // Titan Smoke Count
+table<entity, bool> autoeject // Ejects The Titan On Doom State
+table<entity, bool> deatheject // Ejects The Titan On Death
 array<string> pilotweapons = [
 "mp_weapon_rspn101_og",
 "mp_weapon_r97",
@@ -77,6 +88,55 @@ $"models/humans/pilots/pilot_medium_stalker_m.mdl",
 $"models/humans/pilots/pilot_medium_stalker_f.mdl",
 $"models/humans/pilots/pilot_medium_reaper_m.mdl",
 $"models/humans/pilots/pilot_medium_reaper_f.mdl"
+]
+array<string> pilotnames = [
+    "ShadowRider", "TitanVanguard", "StormBreaker", "IronFist", "NebulaKnight", "PhantomEcho", 
+    "SteelFury", "NovaViper", "ThunderClash", "VortexAlpha", "IronSentinel", "GhostReaper", 
+    "DeathPulse", "TechnoHunter", "SkyReaper", "ScorchedEarth", "BlazeStorm", "DarkRaven", 
+    "FrostWarrior", "WarBringer", "SkyForge", "WolfStriker", "ArcKnight", "EclipseHunter", 
+    "OmegaBlade", "ThunderStrike", "PhantomFury", "RedTalon", "NightRaider", "CycloneBlaze", 
+    "VenomFang", "IronPhantom", "GhostStrike", "EmberStorm", "NovaGuardian", "TitanSlayer", 
+    "RavenWarrior", "StormKnight", "DreadEcho", "DarkNova", "VoidStriker", "TitanHunter", 
+    "PlasmaBeast", "ViperStorm", "StormPhoenix", "SpecterBlaze", "SteelViper", "HellRider", 
+    "NovaRanger", "ShadowTitan", "RadiantFalcon", "CypherBlaze", "ThunderBolt", "IronViper", 
+    "TechSaber", "PhantomViper", "TitanEcho", "FireWalker", "GlacierHunter", "NexusStriker", 
+    "OmegaPhoenix", "HyperBolt", "MechaKnight", "DarkPhantom", "BlackIron", "NightFury", 
+    "BlazeTitan", "DeathStalker", "CycloneFury", "PhantomRider", "ThunderRage", "ShadowAssault", 
+    "IronWarden", "PlasmaVortex", "VengefulFury", "BlazingViper", "EchoWarrior", "SteelBreaker", 
+    "NightReaper", "FrostStrike", "StormFury", "BlazeVanguard", "TitanRanger", "NovaRavager", 
+    "WarBringerX", "ThunderGuardian", "PhantomCannon", "FrostWarriorX", "ShadowRavager", 
+    "TalonReaper", "ViperStrike", "RedInferno", "IronScorcher", "StormViper", "TitanBlaze", 
+    "EchoHunter", "PlasmaViperX", "SpecterWarrior", "GlacierStrike", "VortexReaper", "OmegaRider", 
+    "DreadKnight", "PhantomNova", "CyberStorm", "ThunderWolf", "TitanPhoenix", "FrostVanguard", 
+    "GhostWarden", "BlazeSentinel", "SpecterRanger", "PlasmaViperX", "InfernoTitan", "WarLord", 
+    "EchoTitan", "IronSpecter", "NovaBlade", "CyberViper", "StormKnightX", "PhantomFalcon", 
+    "TitanFury", "RogueStriker", "NightViper", "OmegaWarrior", "ThunderWarden", "PlasmaRanger", 
+    "BlazeKnight", "EchoFury", "TitanHellstorm", "RedViper", "IronWarrior", "SteelWolf", 
+    "ShadowKnight", "StormCannon", "NovaReaver", "CycloneTitan", "SpecterStriker", "PhantomVanguard", 
+    "BlazeStrike", "TitanX", "FrostRider", "ShadowStorm", "OmegaKnight", "VortexTitan", 
+    "TitanNight", "StormReaper", "InfernoBlaze", "PlasmaFury", "NovaTitan", "RogueTitan", 
+    "StormFuryX", "IronBlaze", "PhantomFrost", "DarkViper", "TitanSpecter", "RogueViper", 
+    "VortexBlaze", "TitanCannon", "OmegaViper", "FrostKnight", "NovaHunter", "TitanWarden", 
+    "BlazeHunter", "RedVanguard", "OmegaBlaze", "PlasmaStorm", "StormRider", "NightReaver", 
+    "TitanFrost", "CyberKnight", "BlazeViperX", "FrostViper", "SpecterTitan", "EchoKnight", 
+    "IronPhantomX", "NightTitan", "StormPhantom", "TitanWraith", "NovaStorm", "TitanWarrior", 
+    "RedStorm", "VortexKnight", "PhantomWarrior", "EchoViper", "ThunderTitan", "PlasmaTitan", 
+    "TitanRage", "NovaKnight", "SpecterFury", "TitanSlayerX", "StormRanger", "BlazeAssault", 
+    "EchoRider", "PlasmaWarrior", "TitanInferno", "RedRanger", "StormVanguard", "VortexWarrior", 
+    "RogueFury", "TitanVanguardX", "OmegaTitan", "GhostTitan", "VortexBlazeX", "BlazeFury", 
+    "PlasmaKnight", "SpecterWarden", "TitanWardenX", "PhantomStrike", "RogueKnight", "FrostStorm", 
+    "TitanBlazeX", "ViperHunter", "EchoAssault", "TitanViperX", "RedKnight", "OmegaBlazeX", 
+    "StormViperX", "PlasmaFrost", "TitanWraithX", "GhostReaver", "NightStorm", "FrostAssault", 
+    "BlazeKnightX", "PhantomHunter", "TitanWardenFury", "VortexRider", "ThunderKnight", "PlasmaFuryX", 
+    "SpecterFuryX", "NightKnight", "TitanFuryX", "OmegaStriker", "RedTitan", "VortexHunter", 
+    "FrostStrikeX", "BlazeWarrior", "TitanReaver", "SpecterHunter", "OmegaWarriorX", "PlasmaVanguard", 
+    "VortexRanger", "ShadowHunter", "TitanEchoX", "PlasmaRider", "StormFuryX", "BlazeVanguardX", 
+    "IronHunter", "TitanSpecterX", "PhantomViperX", "NightRider", "ThunderBlaze", "BlazeFuryX", 
+    "PlasmaReaver", "OmegaStrikerX", "TitanVanguardFury", "RedTitanX", "SpecterCannon", "EchoKnightX", 
+    "OmegaHunter", "VortexVanguard", "TitanThunder", "BlazeStrikeX", "FrostHunter", "PlasmaKnightX", 
+    "TitanViperVanguard", "GhostTitanX", "StormVanguardX", "PlasmaWarden", "TitanRider", "OmegaVortex", 
+    "VortexTitanX", "PlasmaWardenX", "TitanHunterX", "TitanWraithVanguard", "OmegaPhantom", 
+    "VortexWarden", "TitanGhostX", "FrostTitanX", "BlazeFuryVanguard", "SpecterTitanX", "RogueTitanX"
 ]
 }file
 
@@ -106,6 +166,14 @@ struct TitanNukeDamage
 	int damageSourceId
 }
 
+struct DroppodStruct
+{
+	entity door
+	bool openDoor = false
+	int numGuys = 0
+	int flags = 0
+}
+
 const NPC_NEXT_TITANTIME_RESET = -1
 const NPC_NEXT_TITANTIME_MIN = 30 // Unused Now
 const NPC_NEXT_TITANTIME_MAX = 60 // Unused Now
@@ -132,6 +200,8 @@ function AiPilots_Init()
 	AddCallback_OnNPCKilled( NPCPilotGetsKill ) // Titanfall Based On Kills :D
     AddCallback_OnPlayerKilled( NPCPilotGetsKill )
 	AddDamageFinalCallback( "npc_pilot_elite", NPCPilotDamageAdjustments )
+	AddDamageFinalCallback( "npc_titan", PilotTitanAutoOrDeathEjectHandle )
+	AddPostDamageCallback( "npc_titan", PilotTitanAutoOrDeathEjectHandle )
 
 	level.onNpcPilotBecomesTitanCallbacks	<- []
 	level.onNpcTitanBecomesPilotCallbacks	<- []
@@ -475,6 +545,57 @@ void function NPCPilotDamageAdjustments( entity pilot, var damageInfo )
 	}
 }
 
+void function PilotTitanAutoOrDeathEjectHandle( entity titan, var damageInfo )
+{
+	if ( IsInstantDeath( damageInfo ) || DamageInfo_GetForceKill( damageInfo ) )	
+		return
+
+	if ( !GetDoomedState( titan ) )
+	    return
+
+	if ( titan.ContextAction_IsBusy() )
+		return
+
+	entity soul = titan.GetTitanSoul()
+
+	if ( !IsValid( soul ) || soul.IsEjecting() )
+		return
+
+	if ( soul.soul.seatedNpcPilot.isValid && ( (titan in file.deatheject && file.deatheject[titan] == true ) || (titan in file.autoeject && file.autoeject[titan] == true) ) )
+	{
+		if ( !TitanCanSurviveDamage( titan, damageInfo ) || (titan in file.autoeject && file.autoeject[titan] == true) )
+		{
+		    if( (titan in file.deatheject && file.deatheject[titan] == true ) && !(titan in file.autoeject && file.autoeject[titan] == true) )
+			DamageInfo_SetDamage( damageInfo, 0 )
+
+			thread TitanEjectPlayerForNPCs( titan )
+
+			if ( IsAlive( titan ) && (titan in file.deatheject && file.deatheject[titan] == true ) && !(titan in file.autoeject && file.autoeject[titan] == true) )
+				titan.SetHealth( 1 )
+		}
+	}
+}
+
+void function GiveTitanAutoEject( entity titan )
+{
+file.autoeject[ titan ] <- true
+}
+
+void function RemoveTitanAutoEject( entity titan )
+{
+file.autoeject[ titan ] <- false
+}
+
+void function GiveTitanDeathEject( entity titan )
+{
+file.deatheject[ titan ] <- true
+}
+
+void function RemoveTitanDeathEject( entity titan )
+{
+file.deatheject[ titan ] <- false
+}
+
 void function PilotTitanExecution( entity ent, var damageInfo )
 {
 thread PilotTitanExecution_thread( ent, damageInfo )
@@ -813,6 +934,351 @@ void function TitanSmokescreen( entity ent )
 	Smokescreen( smokescreen )
 }
 
+void function SpawnPilotInTitan( int team, vector location = < 0, 0, 0 >, vector angle = < 0, 0, 0 > )
+{
+    if( !IsNewThread() )
+	{
+	thread SpawnPilotInTitan( team, location )
+	return
+	}
+	vector origin = < 0, 0, 0 >
+	vector angles = < 0, 0, 0 >
+    if( location == < 0, 0, 0 > || angle == < 0, 0, 0 > )
+	{
+	array<entity> droppodspawns = SpawnPoints_GetTitan()
+	bool isvaliddroppodspawn = false
+	foreach( entity droppod in droppodspawns )
+	{
+	if( IsValid( droppod ) )
+	isvaliddroppodspawn = true
+	}
+	if( isvaliddroppodspawn == false )
+	droppodspawns = SpawnPoints_GetPilot()
+	entity droppod = droppodspawns[ GetSpawnPointIndex( droppodspawns, team ) ]
+	origin = droppod.GetOrigin()
+	angle = droppod.GetAngles()
+	}
+	if( location != < 0, 0, 0 > )
+	origin = location
+	if( angle != < 0, 0, 0 > )
+	angles = angle
+	entity pilot = CreateEntity( "npc_pilot_elite" )
+	pilot.SetOrigin( origin )
+	DispatchSpawn( pilot )
+	pilot.SetInvulnerable()
+	thread RandomPilotWeapon( pilot )
+	thread RandomPilotName( pilot )
+	pilot.kv.AccuracyMultiplier = 10.0
+	pilot.kv.WeaponProficiency = eWeaponProficiency.PERFECT
+	thread RandomPilotModel( pilot )
+	pilot.EnableNPCFlag( NPC_IGNORE_ALL )
+	pilot.kv.VisibilityFlags = ~ENTITY_VISIBLE_TO_EVERYONE
+	array<string> settingsArray = GetAllowedTitanAISettings()
+	bool usewarpfall = false
+	bool usedomeshieldwarpfall = false
+
+	settingsArray.extend([ "npc_titan_auto_atlas_ion_prime", "npc_titan_auto_ogre_scorch_prime", "npc_titan_auto_stryder_northstar_prime", "npc_titan_auto_stryder_ronin_prime", "npc_titan_auto_atlas_tone_prime", "npc_titan_auto_ogre_legion_prime" ])
+	string titanSettings = settingsArray.getrandom()
+	if ( RandomInt( 2 ) < 1 )
+	{
+	usewarpfall = true
+	}
+   if( usewarpfall == false )
+   {
+	if ( GetMapName().find( "mp_lf_") != null || GetMapName() == "mp_grave" )
+	{
+	usedomeshieldwarpfall = true
+	}
+   }
+	if( usewarpfall == true )
+	{
+	NPCPrespawnWarpfallSequence( titanSettings, origin, angles )
+	}
+	if( usedomeshieldwarpfall == true )
+	{
+	NPCPrespawnWarpfallSequenceModded( titanSettings, origin, angles )
+	}
+	string setFile = GetRandomTitanSetFile( titanSettings )
+	entity titan = CreateNPCTitan( setFile, team, origin, angles )
+	SetSpawnOption_AISettings( titan, titanSettings )
+	DispatchSpawn( titan )
+	thread NpcPilotBecomesTitan( pilot, titan )
+
+	//call it in
+   if ( usewarpfall == false )
+   {
+	if( usedomeshieldwarpfall == false )
+	{
+	thread NPCTitanHotdrops( titan, true )
+	}
+   }
+   else
+   {
+   thread NPCTitanHotdropsWarpfall( titan, true )
+   }
+	if( usedomeshieldwarpfall == true )
+	{
+	thread NPCTitanHotdrops( titan, true, "at_hotdrop_drop_2knee_turbo_upgraded" )
+	}
+	int randomtitancamo = RandomIntRange( 0, 160 ) // 159 is all camos
+	titan.SetSkin( 2 ) // titan skin has skinIndex of 2
+	titan.SetCamo( randomtitancamo ) // set camo to random
+	thread AutoTitanLoadout( titan )
+	thread MonitorTitanCore( titan )
+
+	//get the titan ready to be embarked
+	SetStanceKneel( titan.GetTitanSoul() )
+	titan.SetTitle( "[BOT]" + file.pilotnames.getrandom() )
+	UpdateEnemyMemoryFromTeammates( titan )
+}
+
+void function SpawnPilotWithTitan( int team, vector location = < 0, 0, 0 >, vector angle = < 0, 0, 0 > )
+{
+    if( !IsNewThread() )
+	{
+	thread SpawnPilotWithTitan( team, location )
+	return
+	}
+	vector pos = < 0, 0, 0 >
+	vector angles = < 0, 0, 0 >
+    if( location == < 0, 0, 0 > || angle == < 0, 0, 0 > )
+	{
+	array<entity> droppodspawns = SpawnPoints_GetTitan()
+	bool isvaliddroppodspawn = false
+	foreach( entity droppod in droppodspawns )
+	{
+	if( IsValid( droppod ) )
+	isvaliddroppodspawn = true
+	}
+	if( isvaliddroppodspawn == false )
+	droppodspawns = SpawnPoints_GetPilot()
+	entity droppod = droppodspawns[ GetSpawnPointIndex( droppodspawns, team ) ]
+	pos = droppod.GetOrigin()
+	angle = droppod.GetAngles()
+	}
+	if( location != < 0, 0, 0 > )
+	pos = location
+	if( angle != < 0, 0, 0 > )
+	angles = angle
+	entity pod = CreateDropPod( pos, angles )
+	entity poddoor = DropPodDoor( pod )
+
+	array<entity> npcs
+	for ( int i = 0; i < 1; i++ )
+	{
+		entity entitynpc = CreateEntity( "npc_pilot_elite" )
+		entitynpc.SetOrigin( pos )
+		DispatchSpawn( entitynpc )
+		SetTeam( entitynpc, team )
+	    thread RandomPilotWeapon( entitynpc )
+	    thread RandomPilotName( entitynpc )
+	    entitynpc.kv.AccuracyMultiplier = 10.0
+	    entitynpc.kv.WeaponProficiency = eWeaponProficiency.PERFECT
+	    thread PilotSpeedFlagsHPAndBehavior( entitynpc )
+	    thread RandomPilotModel( entitynpc )
+		
+		entitynpc.SetParent( pod, "ATTACH", true )
+		entitynpc.kv.VisibilityFlags = ~ENTITY_VISIBLE_TO_EVERYONE
+		npcs.append( entitynpc )
+	}
+
+	thread NpcPilotCallsInAndEmbarksTitan( npcs.getrandom(), pos, angles, 2, true )
+	waitthread LaunchAnimDropPod( pod, "pod_testpath", pos, angles )
+
+	string squadName = MakeSquadName( team, UniqueString( "" ) )
+	
+	foreach( entity pilot in npcs )
+	pilot.kv.VisibilityFlags = ENTITY_VISIBLE_TO_EVERYONE
+	foreach( entity pilot in npcs )
+	thread PilotMiniMap( pilot )
+	DropPodOpenDoorModded( pod, poddoor )
+	thread DestroyPod( pod, poddoor )
+	thread ActivateFireteamDropPodModded( pod, npcs )
+}
+
+void function SpawnPilot( int team, vector location = < 0, 0, 0 >, vector angle = < 0, 0, 0 > )
+{
+    if( !IsNewThread() )
+	{
+	thread SpawnPilot( team, location )
+	return
+	}
+	vector pos = < 0, 0, 0 >
+	vector angles = < 0, 0, 0 >
+    if( location == < 0, 0, 0 > || angle == < 0, 0, 0 > )
+	{
+	array<entity> droppodspawns = SpawnPoints_GetTitan()
+	bool isvaliddroppodspawn = false
+	foreach( entity droppod in droppodspawns )
+	{
+	if( IsValid( droppod ) )
+	isvaliddroppodspawn = true
+	}
+	if( isvaliddroppodspawn == false )
+	droppodspawns = SpawnPoints_GetPilot()
+	entity droppod = droppodspawns[ GetSpawnPointIndex( droppodspawns, team ) ]
+	pos = droppod.GetOrigin()
+	angle = droppod.GetAngles()
+	}
+	if( location != < 0, 0, 0 > )
+	pos = location
+	if( angle != < 0, 0, 0 > )
+	angles = angle
+	entity pod = CreateDropPod( pos, angles )
+	entity poddoor = DropPodDoor( pod )
+		
+	waitthread LaunchAnimDropPod( pod, "pod_testpath", pos, angles )
+
+	string squadName = MakeSquadName( team, UniqueString( "" ) )
+	array<entity> npcs
+	for ( int i = 0; i < 1; i++ )
+	{
+		entity entitynpc = CreateEntity( "npc_pilot_elite" )
+		entitynpc.SetOrigin( pos )
+		DispatchSpawn( entitynpc )
+		SetTeam( entitynpc, team )
+	    thread RandomPilotWeapon( entitynpc )
+	    thread RandomPilotName( entitynpc )
+	    entitynpc.kv.AccuracyMultiplier = 10.0
+	    entitynpc.kv.WeaponProficiency = eWeaponProficiency.PERFECT
+	    thread PilotMiniMap( entitynpc )
+	    thread PilotSpeedFlagsHPAndBehavior( entitynpc )
+	    thread NpcPilotCallTitanThink( entitynpc )
+	    thread RandomPilotModel( entitynpc )
+		
+		entitynpc.SetParent( pod, "ATTACH", true )
+		npcs.append( entitynpc )
+	}
+	
+	DropPodOpenDoorModded( pod, poddoor )
+	thread DestroyPod( pod, poddoor )
+	thread ActivateFireteamDropPodModded( pod, npcs )
+}
+
+void function DropPodOpenDoorModded( entity pod, entity door )
+{
+	door.ClearParent()
+	door.SetVelocity( door.GetForwardVector() * 500 )
+	EmitSoundOnEntity( pod, "droppod_door_open" )
+}
+
+void function DestroyPod( entity pod, entity door )
+{
+wait 10
+pod.Dissolve( ENTITY_DISSOLVE_CORE, Vector( 0, 0, 0 ), 500 )
+door.Dissolve( ENTITY_DISSOLVE_CORE, Vector( 0, 0, 0 ), 500 )
+}
+
+entity function DropPodDoor( entity pod )
+{
+	string attachment = "hatch"
+	int attachIndex = pod.LookupAttachment( attachment )
+	vector origin = pod.GetAttachmentOrigin( attachIndex )
+	vector angles = pod.GetAttachmentAngles( attachIndex )
+
+	entity prop_physics = CreateEntity( "prop_physics" )
+	SetTargetName( prop_physics, "door" + UniqueString() )
+	prop_physics.SetValueForModelKey( $"models/vehicle/droppod_fireteam/droppod_fireteam_door.mdl" )
+	// Start Asleep
+	// Debris - Don't collide with the player or other debris
+	// Generate output on +USE
+	prop_physics.kv.spawnflags = 261 // non solid for now
+	prop_physics.kv.fadedist = -1
+	prop_physics.kv.physdamagescale = 0.1
+	prop_physics.kv.inertiaScale = 1.0
+	prop_physics.kv.renderamt = 0
+	prop_physics.kv.rendercolor = "255 255 255"
+
+	//DispatchSpawn( prop_physics )
+
+	prop_physics.SetOrigin( origin )
+	prop_physics.SetAngles( angles )
+	prop_physics.SetParent( pod, "HATCH", false )
+	prop_physics.MarkAsNonMovingAttachment()
+
+	return prop_physics
+}
+
+void function ActivateFireteamDropPodModded( entity pod, array<entity> guys )
+{
+	if ( guys.len() >= 1 )
+	{
+		SetAnim( guys[0], "drop_pod_exit_anim", "pt_dp_exit_a" )
+		SetAnim( guys[0], "drop_pod_idle_anim", "pt_dp_idle_a" )
+	}
+
+	if ( guys.len() >= 2 )
+	{
+		SetAnim( guys[1], "drop_pod_exit_anim", "pt_dp_exit_b" )
+		SetAnim( guys[1], "drop_pod_idle_anim", "pt_dp_idle_b" )
+	}
+
+	if ( guys.len() >= 3 )
+	{
+		SetAnim( guys[2], "drop_pod_exit_anim", "pt_dp_exit_c" )
+		SetAnim( guys[2], "drop_pod_idle_anim", "pt_dp_idle_c" )
+	}
+
+	if ( guys.len() >= 4 )
+	{
+		SetAnim( guys[3], "drop_pod_exit_anim", "pt_dp_exit_d" )
+		SetAnim( guys[3], "drop_pod_idle_anim", "pt_dp_idle_d" )
+	}
+
+	foreach ( guy in guys )
+	{
+		if ( IsAlive( guy ) )
+		{
+			guy.MakeVisible()
+			entity weapon = guy.GetActiveWeapon()
+			if ( IsValid( weapon ) )
+				weapon.MakeVisible()
+
+			thread GuyHangsInPod( guy, pod )
+		}
+	}
+}
+
+void function GuyHangsInPod( entity guy, entity pod )
+{
+	guy.EndSignal( "OnDeath" )
+	guy.EndSignal( "OnDestroy" )
+
+	string exitAnim
+
+	guy.SetParent( pod, "ATTACH", false )
+
+	exitAnim =  expect string ( GetAnim( guy, "drop_pod_exit_anim" ) )
+	bool exitAnimExists = guy.LookupSequence( exitAnim ) != -1
+	if ( exitAnimExists )
+		guy.Anim_ScriptedPlay( exitAnim )
+
+	guy.ClearParent()
+
+	if ( exitAnimExists )
+		WaittillAnimDone( guy )
+	guy.Signal( "npc_deployed" )
+}
+
+int function GetSpawnPointIndex( array< entity > points, int team )
+{
+	entity zone = DecideSpawnZone_Generic( points, team )
+	
+	if ( IsValid( zone ) )
+	{
+		// 20 Tries to get a random point close to the zone
+		for ( int i = 0; i < 20; i++ )
+		{
+			int index = RandomInt( points.len() )
+		
+			if ( Distance2D( points[ index ].GetOrigin(), zone.GetOrigin() ) < 6000 )
+				return index
+		}
+	}
+	
+	return RandomInt( points.len() )
+}
+
 void function GiveTitanSmokeEveryThirtySeconds( entity npc )
 {
 npc.EndSignal( "OnDestroy" )
@@ -835,9 +1301,11 @@ npc.EndSignal( "OnDeath" )
  }
 }
 
-entity function NpcPilotCallsInAndEmbarksTitan( entity pilot, vector origin, vector angles )
+entity function NpcPilotCallsInAndEmbarksTitan( entity pilot, vector origin, vector angles, int waittime = 0, bool dontusewarpfall = false )
 {
-	entity titan = NpcPilotCallsInTitan( pilot, origin, angles )
+    if( waittime != 0 )
+	wait waittime
+	entity titan = NpcPilotCallsInTitan( pilot, origin, angles, dontusewarpfall )
 	thread NpcPilotRunsToAndEmbarksFallingTitan( pilot, titan )
 
 	return titan
@@ -870,7 +1338,7 @@ function NpcPilotRunsToAndEmbarksFallingTitan( entity pilot, entity titan )
 	waitthread NpcPilotEmbarksTitan( pilot, titan )
 }
 
-entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles )
+entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles, bool dontusewarpfall = false )
 {
 	Assert( !pilot.IsTitan() )
 	Assert( IsAlive( pilot ) )
@@ -888,7 +1356,7 @@ entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles
 	string titanSettings = settingsArray.getrandom()
 	string pilotname = pilot.GetTitle() // Pilot Could Die During Warpfall Which Can Crash The Server
 	int pilotteam = pilot.GetTeam()
-	if ( RandomInt( 2 ) < 1 )
+	if ( RandomInt( 2 ) < 1 && dontusewarpfall == false )
 	{
 	usewarpfall = true
 	}
@@ -1154,59 +1622,9 @@ void function NPCPrespawnWarpfallSequenceModded( string aiSettings, vector spawn
 	wait WARPFALL_FX_DELAY
 }
 
-array<string> function RandomPilotName( pilot ) 
+void function RandomPilotName( pilot ) 
 {
-array<string> RandomPilotNames = [
-    "ShadowRider", "TitanVanguard", "StormBreaker", "IronFist", "NebulaKnight", "PhantomEcho", 
-    "SteelFury", "NovaViper", "ThunderClash", "VortexAlpha", "IronSentinel", "GhostReaper", 
-    "DeathPulse", "TechnoHunter", "SkyReaper", "ScorchedEarth", "BlazeStorm", "DarkRaven", 
-    "FrostWarrior", "WarBringer", "SkyForge", "WolfStriker", "ArcKnight", "EclipseHunter", 
-    "OmegaBlade", "ThunderStrike", "PhantomFury", "RedTalon", "NightRaider", "CycloneBlaze", 
-    "VenomFang", "IronPhantom", "GhostStrike", "EmberStorm", "NovaGuardian", "TitanSlayer", 
-    "RavenWarrior", "StormKnight", "DreadEcho", "DarkNova", "VoidStriker", "TitanHunter", 
-    "PlasmaBeast", "ViperStorm", "StormPhoenix", "SpecterBlaze", "SteelViper", "HellRider", 
-    "NovaRanger", "ShadowTitan", "RadiantFalcon", "CypherBlaze", "ThunderBolt", "IronViper", 
-    "TechSaber", "PhantomViper", "TitanEcho", "FireWalker", "GlacierHunter", "NexusStriker", 
-    "OmegaPhoenix", "HyperBolt", "MechaKnight", "DarkPhantom", "BlackIron", "NightFury", 
-    "BlazeTitan", "DeathStalker", "CycloneFury", "PhantomRider", "ThunderRage", "ShadowAssault", 
-    "IronWarden", "PlasmaVortex", "VengefulFury", "BlazingViper", "EchoWarrior", "SteelBreaker", 
-    "NightReaper", "FrostStrike", "StormFury", "BlazeVanguard", "TitanRanger", "NovaRavager", 
-    "WarBringerX", "ThunderGuardian", "PhantomCannon", "FrostWarriorX", "ShadowRavager", 
-    "TalonReaper", "ViperStrike", "RedInferno", "IronScorcher", "StormViper", "TitanBlaze", 
-    "EchoHunter", "PlasmaViperX", "SpecterWarrior", "GlacierStrike", "VortexReaper", "OmegaRider", 
-    "DreadKnight", "PhantomNova", "CyberStorm", "ThunderWolf", "TitanPhoenix", "FrostVanguard", 
-    "GhostWarden", "BlazeSentinel", "SpecterRanger", "PlasmaViperX", "InfernoTitan", "WarLord", 
-    "EchoTitan", "IronSpecter", "NovaBlade", "CyberViper", "StormKnightX", "PhantomFalcon", 
-    "TitanFury", "RogueStriker", "NightViper", "OmegaWarrior", "ThunderWarden", "PlasmaRanger", 
-    "BlazeKnight", "EchoFury", "TitanHellstorm", "RedViper", "IronWarrior", "SteelWolf", 
-    "ShadowKnight", "StormCannon", "NovaReaver", "CycloneTitan", "SpecterStriker", "PhantomVanguard", 
-    "BlazeStrike", "TitanX", "FrostRider", "ShadowStorm", "OmegaKnight", "VortexTitan", 
-    "TitanNight", "StormReaper", "InfernoBlaze", "PlasmaFury", "NovaTitan", "RogueTitan", 
-    "StormFuryX", "IronBlaze", "PhantomFrost", "DarkViper", "TitanSpecter", "RogueViper", 
-    "VortexBlaze", "TitanCannon", "OmegaViper", "FrostKnight", "NovaHunter", "TitanWarden", 
-    "BlazeHunter", "RedVanguard", "OmegaBlaze", "PlasmaStorm", "StormRider", "NightReaver", 
-    "TitanFrost", "CyberKnight", "BlazeViperX", "FrostViper", "SpecterTitan", "EchoKnight", 
-    "IronPhantomX", "NightTitan", "StormPhantom", "TitanWraith", "NovaStorm", "TitanWarrior", 
-    "RedStorm", "VortexKnight", "PhantomWarrior", "EchoViper", "ThunderTitan", "PlasmaTitan", 
-    "TitanRage", "NovaKnight", "SpecterFury", "TitanSlayerX", "StormRanger", "BlazeAssault", 
-    "EchoRider", "PlasmaWarrior", "TitanInferno", "RedRanger", "StormVanguard", "VortexWarrior", 
-    "RogueFury", "TitanVanguardX", "OmegaTitan", "GhostTitan", "VortexBlazeX", "BlazeFury", 
-    "PlasmaKnight", "SpecterWarden", "TitanWardenX", "PhantomStrike", "RogueKnight", "FrostStorm", 
-    "TitanBlazeX", "ViperHunter", "EchoAssault", "TitanViperX", "RedKnight", "OmegaBlazeX", 
-    "StormViperX", "PlasmaFrost", "TitanWraithX", "GhostReaver", "NightStorm", "FrostAssault", 
-    "BlazeKnightX", "PhantomHunter", "TitanWardenFury", "VortexRider", "ThunderKnight", "PlasmaFuryX", 
-    "SpecterFuryX", "NightKnight", "TitanFuryX", "OmegaStriker", "RedTitan", "VortexHunter", 
-    "FrostStrikeX", "BlazeWarrior", "TitanReaver", "SpecterHunter", "OmegaWarriorX", "PlasmaVanguard", 
-    "VortexRanger", "ShadowHunter", "TitanEchoX", "PlasmaRider", "StormFuryX", "BlazeVanguardX", 
-    "IronHunter", "TitanSpecterX", "PhantomViperX", "NightRider", "ThunderBlaze", "BlazeFuryX", 
-    "PlasmaReaver", "OmegaStrikerX", "TitanVanguardFury", "RedTitanX", "SpecterCannon", "EchoKnightX", 
-    "OmegaHunter", "VortexVanguard", "TitanThunder", "BlazeStrikeX", "FrostHunter", "PlasmaKnightX", 
-    "TitanViperVanguard", "GhostTitanX", "StormVanguardX", "PlasmaWarden", "TitanRider", "OmegaVortex", 
-    "VortexTitanX", "PlasmaWardenX", "TitanHunterX", "TitanWraithVanguard", "OmegaPhantom", 
-    "VortexWarden", "TitanGhostX", "FrostTitanX", "BlazeFuryVanguard", "SpecterTitanX", "RogueTitanX"
-]
-pilot.SetTitle( "[BOT]" + RandomPilotNames.getrandom() )
-return RandomPilotNames
+pilot.SetTitle( "[BOT]" + file.pilotnames.getrandom() )
 }
 
 void function RandomPilotWeapon( entity pilot )
@@ -1789,8 +2207,14 @@ void function AutoTitanLoadout( entity titan )
 	titan.SetMaxHealth( titan.GetMaxHealth() + 2500 )
 	titan.SetHealth( titan.GetMaxHealth() )
 	}
-	if ( RandomInt( 100 ) < 50 )
-	NPC_SetNuclearPayload( titan )
+	bool hasnucleareject = false
+	 if ( RandomInt( 100 ) < 50 )
+	 {
+	 hasnucleareject = true
+	 NPC_SetNuclearPayload( titan )
+	 }
+	 if ( hasnucleareject == false && RandomInt( 100 ) < 50 )
+	 GiveTitanAutoEject( titan )
 	}
 }
 
@@ -2091,7 +2515,10 @@ entity function NpcTitanBecomesPilot( entity titan )
 	titan.kv.AccuracyMultiplier = 1.0
 	pilot.SetTitle( title )
 	titan.SetTitle( pilot.GetTitle() + "'s Auto-Titan" )
+	if( file.pilotmodels.contains( model ) )
 	pilot.SetModel( model ) // this is a hack, trying to avoid having a model spawn option because its easy to abuse
+	else
+	pilot.SetModel( file.pilotmodels.getrandom() )
 	TakeWeaponsForArray( pilot, pilot.GetMainWeapons() )
 	foreach( string newweapons in weapon )
 	{
