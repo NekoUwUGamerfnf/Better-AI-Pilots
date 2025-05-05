@@ -200,7 +200,7 @@ function AiPilots_Init()
 	AddDamageCallbackSourceID( eDamageSourceId.auto_titan_melee, ApplyNormalMeleeIdToNPCTitan )
 	AddCallback_OnNPCKilled( NPCPilotGetsKill ) // Titanfall Based On Kills :D
     AddCallback_OnPlayerKilled( NPCPilotGetsKill )
-	AddDamageFinalCallback( "npc_pilot_elite", NPCPilotDamageAdjustments )
+	AddDamageFinalCallback( "npc_pilot_elite", PilotDamageAdjustments )
 	AddDamageFinalCallback( "npc_titan", PilotTitanAutoOrDeathEjectHandle )
 	AddPostDamageCallback( "npc_titan", PilotTitanAutoOrDeathEjectHandle )
 
@@ -523,7 +523,7 @@ else
 file.titanready[ attacker ] = newpointscount
 }
 
-void function NPCPilotDamageAdjustments( entity pilot, var damageInfo )
+void function PilotDamageAdjustments( entity pilot, var damageInfo )
 {	
 	if ( IsInstantDeath( damageInfo ) || DamageInfo_GetForceKill( damageInfo ) ) // force kill damage( trigger_hurt, executions ) shouldn't be handled
 		return
