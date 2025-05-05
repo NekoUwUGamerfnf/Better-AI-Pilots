@@ -954,7 +954,7 @@ void function SpawnPilotInTitan( int team, vector location = < 0, 0, 0 >, vector
 	}
 	if( isvaliddroppodspawn == false )
 	droppodspawns = SpawnPoints_GetPilot()
-	entity droppod = droppodspawns[ GetSpawnPointIndex( droppodspawns, team ) ]
+	entity droppod = droppodspawns.getrandom()
 	origin = droppod.GetOrigin()
 	angle = droppod.GetAngles()
 	}
@@ -1052,7 +1052,7 @@ void function SpawnPilotWithTitan( int team, vector location = < 0, 0, 0 >, vect
 	}
 	if( isvaliddroppodspawn == false )
 	droppodspawns = SpawnPoints_GetPilot()
-	entity droppod = droppodspawns[ GetSpawnPointIndex( droppodspawns, team ) ]
+	entity droppod = droppodspawns.getrandom()
 	pos = droppod.GetOrigin()
 	angle = droppod.GetAngles()
 	}
@@ -1116,7 +1116,7 @@ void function SpawnPilot( int team, vector location = < 0, 0, 0 >, vector angle 
 	}
 	if( isvaliddroppodspawn == false )
 	droppodspawns = SpawnPoints_GetPilot()
-	entity droppod = droppodspawns[ GetSpawnPointIndex( droppodspawns, team ) ]
+	entity droppod = droppodspawns.getrandom()
 	pos = droppod.GetOrigin()
 	angle = droppod.GetAngles()
 	}
@@ -1258,25 +1258,6 @@ void function GuyHangsInPod( entity guy, entity pod )
 	if ( exitAnimExists )
 		WaittillAnimDone( guy )
 	guy.Signal( "npc_deployed" )
-}
-
-int function GetSpawnPointIndex( array< entity > points, int team )
-{
-	entity zone = DecideSpawnZone_Generic( points, team )
-	
-	if ( IsValid( zone ) )
-	{
-		// 20 Tries to get a random point close to the zone
-		for ( int i = 0; i < 20; i++ )
-		{
-			int index = RandomInt( points.len() )
-		
-			if ( Distance2D( points[ index ].GetOrigin(), zone.GetOrigin() ) < 6000 )
-				return index
-		}
-	}
-	
-	return RandomInt( points.len() )
 }
 
 void function GiveTitanSmokeEveryThirtySeconds( entity npc )
