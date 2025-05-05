@@ -374,7 +374,7 @@ array <int> flags
 flags.extend([ NPC_NO_PAIN, NPC_NO_GESTURE_PAIN, NPC_ALLOW_PATROL, NPC_ALLOW_INVESTIGATE, NPC_IGNORE_FRIENDLY_SOUND ])
 thread OnFlagChanged( npc, flags )
 array <int> disableflags 
-disableflags.extend([ NPC_PAIN_IN_SCRIPTED_ANIM, NPC_ALLOW_FLEE ])
+disableflags.extend([ NPC_PAIN_IN_SCRIPTED_ANIM ])
 thread OnFlagChanged( npc, disableflags, true )
 npc.SetMaxHealth( 750 )
 npc.SetHealth( 750 )
