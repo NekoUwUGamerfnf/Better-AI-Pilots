@@ -1082,7 +1082,7 @@ void function SpawnPilotWithTitan( int team, vector location = < 0, 0, 0 >, vect
 		npcs.append( entitynpc )
 	}
 
-	thread NpcPilotCallsInAndEmbarksTitan( npcs.getrandom(), pos, angles, 2, true )
+	thread NpcPilotCallsInAndEmbarksTitan( npcs.getrandom(), pos, angles, 2.5, true )
 	waitthread LaunchAnimDropPod( pod, "pod_testpath", pos, angles )
 
 	string squadName = MakeSquadName( team, UniqueString( "" ) )
@@ -1092,8 +1092,7 @@ void function SpawnPilotWithTitan( int team, vector location = < 0, 0, 0 >, vect
 	foreach( entity pilot in npcs )
 	thread PilotMiniMap( pilot )
 	DropPodOpenDoorModded( pod, poddoor )
-	thread DestroyPod( pod, poddoor )
-	thread ActivateFireteamDropPodModded( pod, npcs )
+	thread ActivateFireteamDropPodModded( pod, npcs, poddoor )
 }
 
 void function SpawnPilot( int team, vector location = < 0, 0, 0 >, vector angle = < 0, 0, 0 > )
@@ -1151,8 +1150,7 @@ void function SpawnPilot( int team, vector location = < 0, 0, 0 >, vector angle 
 	}
 	
 	DropPodOpenDoorModded( pod, poddoor )
-	thread DestroyPod( pod, poddoor )
-	thread ActivateFireteamDropPodModded( pod, npcs )
+	thread ActivateFireteamDropPodModded( pod, npcs, poddoor )
 }
 
 void function DropPodOpenDoorModded( entity pod, entity door )
@@ -1164,7 +1162,6 @@ void function DropPodOpenDoorModded( entity pod, entity door )
 
 void function DestroyPod( entity pod, entity door )
 {
-wait 10
 pod.Dissolve( ENTITY_DISSOLVE_CORE, Vector( 0, 0, 0 ), 500 )
 door.Dissolve( ENTITY_DISSOLVE_CORE, Vector( 0, 0, 0 ), 500 )
 }
@@ -1199,7 +1196,7 @@ entity function DropPodDoor( entity pod )
 	return prop_physics
 }
 
-void function ActivateFireteamDropPodModded( entity pod, array<entity> guys )
+void function ActivateFireteamDropPodModded( entity pod, array<entity> guys, entity poddoor )
 {
 	if ( guys.len() >= 1 )
 	{
@@ -1234,12 +1231,12 @@ void function ActivateFireteamDropPodModded( entity pod, array<entity> guys )
 			if ( IsValid( weapon ) )
 				weapon.MakeVisible()
 
-			thread GuyHangsInPod( guy, pod )
+			thread GuyHangsInPod( guy, pod, poddoor )
 		}
 	}
 }
 
-void function GuyHangsInPod( entity guy, entity pod )
+void function GuyHangsInPod( entity guy, entity pod, entity poddoor )
 {
 	guy.EndSignal( "OnDeath" )
 	guy.EndSignal( "OnDestroy" )
@@ -1257,6 +1254,7 @@ void function GuyHangsInPod( entity guy, entity pod )
 
 	if ( exitAnimExists )
 		WaittillAnimDone( guy )
+	thread DestroyPod( pod, poddoor )
 	guy.Signal( "npc_deployed" )
 }
 
@@ -1282,9 +1280,9 @@ npc.EndSignal( "OnDeath" )
  }
 }
 
-entity function NpcPilotCallsInAndEmbarksTitan( entity pilot, vector origin, vector angles, int waittime = 0, bool dontusewarpfall = false )
+entity function NpcPilotCallsInAndEmbarksTitan( entity pilot, vector origin, vector angles, float waittime = 0.0, bool dontusewarpfall = false )
 {
-    if( waittime != 0 )
+    if( waittime != 0.0 )
 	wait waittime
 	entity titan = NpcPilotCallsInTitan( pilot, origin, angles, dontusewarpfall )
 	thread NpcPilotRunsToAndEmbarksFallingTitan( pilot, titan )
