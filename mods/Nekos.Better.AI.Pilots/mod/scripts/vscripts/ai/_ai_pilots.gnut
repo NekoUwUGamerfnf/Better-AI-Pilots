@@ -61,6 +61,7 @@ table<entity, int> titanready // Based On Pilots Kills Original Titanfall Devs W
 table<entity, int> smokecount // Titan Smoke Count
 table<entity, bool> autoeject // Ejects The Titan On Doom State
 table<entity, bool> deatheject // Ejects The Titan On Death
+table<entity, bool> titanisbeingembarked
 array<string> pilotweapons = [
 "mp_weapon_rspn101_og",
 "mp_weapon_r97",
@@ -938,7 +939,7 @@ void function SpawnPilotInTitan( int team, vector location = < 0, 0, 0 >, vector
 {
     if( !IsNewThread() )
 	{
-	thread SpawnPilotInTitan( team, location )
+	thread SpawnPilotInTitan( team, location, angle )
 	return
 	}
 	vector origin = < 0, 0, 0 >
@@ -1036,7 +1037,7 @@ void function SpawnPilotWithTitan( int team, vector location = < 0, 0, 0 >, vect
 {
     if( !IsNewThread() )
 	{
-	thread SpawnPilotWithTitan( team, location )
+	thread SpawnPilotWithTitan( team, location, angle )
 	return
 	}
 	vector pos = < 0, 0, 0 >
@@ -1099,7 +1100,7 @@ void function SpawnPilot( int team, vector location = < 0, 0, 0 >, vector angle 
 {
     if( !IsNewThread() )
 	{
-	thread SpawnPilot( team, location )
+	thread SpawnPilot( team, location, angle )
 	return
 	}
 	vector pos = < 0, 0, 0 >
@@ -2202,14 +2203,10 @@ void function TitanStandAfterDropIn( entity titan, entity pilot )
 wait 23
 if( IsValid( titan ) && IsValid( pilot ) )
 {
-if( IsAlive( titan ) && IsAlive( pilot ) && !pilot.IsInvulnerable() )
-{
-local embarkSet = FindBestEmbark( pilot, titan )
-if ( embarkSet == null )
+if( IsAlive( titan ) && IsAlive( pilot ) && (!(titan in file.titanisbeingembarked) || file.titanisbeingembarked[titan] == false) )
 {
 titan.GetTitanSoul().soul.seatedNpcPilot.titanstanding = true
 thread TitanStandUp( titan )
-}
 }
 }
 }
@@ -2280,6 +2277,7 @@ function NpcPilotEmbarksTitan( entity pilot, entity titan )
 	array <int> nopain
 	nopain.append( NPC_NO_PAIN )
 	thread OnFlagChanged( titan, nopain, false, true, false )
+	file.titanisbeingembarked[titan] <- true
 	waitthread PlayAnimGravity( titan, titanAnim )
 	SetStanceStand( titan.GetTitanSoul() )
 	NpcPilotBecomesTitan( pilot, titan )
