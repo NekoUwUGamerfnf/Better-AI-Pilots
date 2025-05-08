@@ -935,11 +935,11 @@ void function TitanSmokescreen( entity ent )
 	Smokescreen( smokescreen )
 }
 
-void function SpawnPilotInTitan( int team, vector location = < 0, 0, 0 >, vector angle = < 0, 0, 0 > )
+void function SpawnPilotInTitan( int team, bool godmode = false, vector location = < 0, 0, 0 >, vector angle = < 0, 0, 0 > )
 {
     if( !IsNewThread() )
 	{
-	thread SpawnPilotInTitan( team, location, angle )
+	thread SpawnPilotInTitan( team, godmode, location, angle )
 	return
 	}
 	vector origin = < 0, 0, 0 >
@@ -1026,6 +1026,8 @@ void function SpawnPilotInTitan( int team, vector location = < 0, 0, 0 >, vector
 	titan.SetCamo( randomtitancamo ) // set camo to random
 	thread AutoTitanLoadout( titan )
 	thread MonitorTitanCore( titan )
+	if( godmode == true )
+	titan.SetInvulnerable()
 
 	//get the titan ready to be embarked
 	SetStanceKneel( titan.GetTitanSoul() )
@@ -1033,11 +1035,11 @@ void function SpawnPilotInTitan( int team, vector location = < 0, 0, 0 >, vector
 	UpdateEnemyMemoryFromTeammates( titan )
 }
 
-void function SpawnPilotWithTitan( int team, vector location = < 0, 0, 0 >, vector angle = < 0, 0, 0 > )
+void function SpawnPilotWithTitan( int team, bool godmode = false, vector location = < 0, 0, 0 >, vector angle = < 0, 0, 0 > )
 {
     if( !IsNewThread() )
 	{
-	thread SpawnPilotWithTitan( team, location, angle )
+	thread SpawnPilotWithTitan( team, godmode, location, angle )
 	return
 	}
 	vector pos = < 0, 0, 0 >
@@ -1077,6 +1079,8 @@ void function SpawnPilotWithTitan( int team, vector location = < 0, 0, 0 >, vect
 	    entitynpc.kv.WeaponProficiency = eWeaponProficiency.PERFECT
 	    thread PilotSpeedFlagsHPAndBehavior( entitynpc )
 	    thread RandomPilotModel( entitynpc )
+		if( godmode == true )
+		entitynpc.SetInvulnerable()
 		
 		entitynpc.SetParent( pod, "ATTACH", true )
 		entitynpc.kv.VisibilityFlags = ~ENTITY_VISIBLE_TO_EVERYONE
@@ -1096,11 +1100,11 @@ void function SpawnPilotWithTitan( int team, vector location = < 0, 0, 0 >, vect
 	thread ActivateFireteamDropPodModded( pod, npcs, poddoor )
 }
 
-void function SpawnPilot( int team, vector location = < 0, 0, 0 >, vector angle = < 0, 0, 0 > )
+void function SpawnPilot( int team, bool godmode = false, vector location = < 0, 0, 0 >, vector angle = < 0, 0, 0 > )
 {
     if( !IsNewThread() )
 	{
-	thread SpawnPilot( team, location, angle )
+	thread SpawnPilot( team, godmode, location, angle )
 	return
 	}
 	vector pos = < 0, 0, 0 >
@@ -1145,6 +1149,8 @@ void function SpawnPilot( int team, vector location = < 0, 0, 0 >, vector angle 
 	    thread PilotSpeedFlagsHPAndBehavior( entitynpc )
 	    thread NpcPilotCallTitanThink( entitynpc )
 	    thread RandomPilotModel( entitynpc )
+		if( godmode == true )
+		entitynpc.SetInvulnerable()
 		
 		entitynpc.SetParent( pod, "ATTACH", true )
 		npcs.append( entitynpc )
@@ -2397,20 +2403,13 @@ void function NpcPilotBecomesTitan( entity pilot, entity titan )
 void function EjectWhenDoomed( entity titan )
 {
 bool shouldEjectTitan = false
+titan.EndSignal( "OnDestroy" )
+titan.EndSignal( "OnDeath" )
  while( true )
  {
-if( !IsValid( titan ) )
-return
-if ( !IsAlive( titan ) )
-return
 if ( titan.GetTitanSoul().IsDoomed() )
 {
-wait 0.8
-if( !IsValid( titan ) )
-return
-
-if ( !IsAlive( titan ) )
-return
+wait 1
 while( titan.GetTitanSoul().IsDoomed() )
 {
 wait 0.2
