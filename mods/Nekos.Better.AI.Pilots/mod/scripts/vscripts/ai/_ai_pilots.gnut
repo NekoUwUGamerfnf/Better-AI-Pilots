@@ -974,6 +974,8 @@ void function SpawnPilotInTitan( int team, bool godmode = false, vector location
 	thread RandomPilotModel( pilot )
 	pilot.EnableNPCFlag( NPC_IGNORE_ALL )
 	pilot.kv.VisibilityFlags = ~ENTITY_VISIBLE_TO_EVERYONE
+	pilot.s.petTitan <- null
+	pilot.s.nextTitanRespawnAvailable <- null
 	array<string> settingsArray = GetAllowedTitanAISettings()
 	bool usewarpfall = false
 	bool usedomeshieldwarpfall = false
@@ -1079,6 +1081,8 @@ void function SpawnPilotWithTitan( int team, bool godmode = false, vector locati
 	    entitynpc.kv.WeaponProficiency = eWeaponProficiency.PERFECT
 	    thread PilotSpeedFlagsHPAndBehavior( entitynpc )
 	    thread RandomPilotModel( entitynpc )
+	    entitynpc.s.petTitan <- null
+	    entitynpc.s.nextTitanRespawnAvailable <- null
 		if( godmode == true )
 		entitynpc.SetInvulnerable()
 		
@@ -1149,6 +1153,8 @@ void function SpawnPilot( int team, bool godmode = false, vector location = < 0,
 	    thread PilotSpeedFlagsHPAndBehavior( entitynpc )
 	    thread NpcPilotCallTitanThink( entitynpc )
 	    thread RandomPilotModel( entitynpc )
+	    entitynpc.s.petTitan <- null
+	    entitynpc.s.nextTitanRespawnAvailable <- null
 		if( godmode == true )
 		entitynpc.SetInvulnerable()
 		
