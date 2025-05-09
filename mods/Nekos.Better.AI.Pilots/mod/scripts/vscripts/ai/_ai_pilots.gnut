@@ -2173,11 +2173,13 @@ void function AutoTitanLoadout( entity titan )
 						if( IsValid( soul ) )
 						{
 						soul.soul.titanLoadout.titanExecution = "execution_vanguard"
-						if ( RandomInt( 100 ) < 50 )
-						{
-						GivePassive( soul, ePassives.PAS_VANGUARD_COREMETER )
-						soul.soul.titanLoadout.titanExecution = "execution_vanguard_kit"
-						}
+						 if ( RandomInt( 100 ) < 50 )
+						 {
+						 GivePassive( soul, ePassives.PAS_VANGUARD_COREMETER )
+						 soul.soul.titanLoadout.titanExecution = "execution_vanguard_kit"
+						 }
+						 if ( SoulHasPassive( soul, ePassives.PAS_VANGUARD_COREMETER ) && RandomInt( 100 ) < 50 )
+						 GivePassive( soul, ePassives.PAS_VANGUARD_DOOM )
 						}
                         break;
         case "northstar":
@@ -2289,6 +2291,7 @@ function NpcPilotEmbarksTitan( entity pilot, entity titan )
 	array <int> nopain
 	nopain.append( NPC_NO_PAIN )
 	thread OnFlagChanged( titan, nopain, false, true, false )
+	pilot.EnableNPCFlag( NPC_IGNORE_ALL )
 	file.titanisbeingembarked[titan] <- true
 	waitthread PlayAnimGravity( titan, titanAnim )
 	SetStanceStand( titan.GetTitanSoul() )
