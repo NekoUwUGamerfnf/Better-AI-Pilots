@@ -374,7 +374,7 @@ array <int> flags
 flags.extend([ NPC_NO_PAIN, NPC_NO_GESTURE_PAIN, NPC_ALLOW_PATROL, NPC_ALLOW_INVESTIGATE, NPC_IGNORE_FRIENDLY_SOUND ])
 thread OnFlagChanged( npc, flags )
 array <int> disableflags 
-disableflags.extend([ NPC_PAIN_IN_SCRIPTED_ANIM ])
+disableflags.extend([ NPC_PAIN_IN_SCRIPTED_ANIM, NPC_ALLOW_FLEE ])
 thread OnFlagChanged( npc, disableflags, true )
 npc.SetMaxHealth( 750 )
 npc.SetHealth( 750 )
@@ -551,9 +551,6 @@ void function PilotTitanAutoOrDeathEjectHandle( entity titan, var damageInfo )
 	if ( IsInstantDeath( damageInfo ) || DamageInfo_GetForceKill( damageInfo ) )	
 		return
 
-	if ( !GetDoomedState( titan ) )
-	    return
-
 	if ( titan.ContextAction_IsBusy() )
 		return
 
@@ -564,7 +561,7 @@ void function PilotTitanAutoOrDeathEjectHandle( entity titan, var damageInfo )
 
 	if ( soul.soul.seatedNpcPilot.isValid && ( (titan in file.deatheject && file.deatheject[titan] == true ) || (titan in file.autoeject && file.autoeject[titan] == true) ) )
 	{
-		if ( !TitanCanSurviveDamage( titan, damageInfo ) || (titan in file.autoeject && file.autoeject[titan] == true) )
+		if ( !TitanCanSurviveDamage( titan, damageInfo ) || (titan in file.autoeject && file.autoeject[titan] == true && GetDoomedState( titan )) )
 		{
 		    if( (titan in file.deatheject && file.deatheject[titan] == true ) && !(titan in file.autoeject && file.autoeject[titan] == true) )
 			DamageInfo_SetDamage( damageInfo, 0 )
@@ -668,17 +665,18 @@ bool function TitanCanSurviveDamage( entity titan, var damageInfo )
 
 int function GetTitanValidHealthFromDamageInfo( entity titan, var damageInfo )
 {
-    // force kill damage -- health is never valid
     if ( DamageInfo_GetForceKill( damageInfo ) )
         return 0
 
     const int INFINITE_HEALTH = 999999 // over max health limit, means titan won't die from damage
 
     entity soul = titan.GetTitanSoul()
-    int healthShield = titan.GetHealth() 
+    int healthShield = titan.GetHealth()
     if ( IsValid( soul ) )
         healthShield += soul.GetShieldHealth()
-    // undoomed titan
+	if ( IsValid( soul ) && !GetDoomedState( titan ) && !soul.soul.skipDoomState )
+	    healthShield += 2500
+
     if ( GetDoomedState( titan ) )
     {
         // in damage protection -- never die from current damage
@@ -687,12 +685,9 @@ int function GetTitanValidHealthFromDamageInfo( entity titan, var damageInfo )
             if ( Time() - soul.soul.doomedStartTime < TITAN_DOOMED_INVUL_TIME )
                 return INFINITE_HEALTH
         }
-
-        // normal doomed titan, valid health is current health + shield
-        return healthShield
     }
     
-    return 0 // titan in unknown state...
+    return healthShield
 }
 
 void function PilotTitanExecution_Wait( entity attacker, vector attackerStartingAngles, bool godmode )
