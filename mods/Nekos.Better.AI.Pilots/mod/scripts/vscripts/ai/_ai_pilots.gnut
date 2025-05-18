@@ -1172,7 +1172,7 @@ bool function IsSpawnpointValid( entity spawnpoint, int team )
 			return false
 	}
 		
-	if ( spawnpoint.IsOccupied() || Time() - spawnpoint.s.lastUsedTime <= 10.0 )
+	if ( spawnpoint.IsOccupied() || ("inuse" in spawnpoint.s && spawnpoint.s.inuse) || ("lastUsedTime" in spawnpoint.s && Time() - spawnpoint.s.lastUsedTime <= 10.0) )
 		return false
 	
 	if ( SpawnPointInNoSpawnArea( spawnpoint.GetOrigin(), team ) )
