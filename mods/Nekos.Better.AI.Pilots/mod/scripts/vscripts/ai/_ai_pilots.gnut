@@ -1022,7 +1022,7 @@ void function SpawnPilotInTitan( int team, bool godmode = false, vector location
 
 	//get the titan ready to be embarked
 	SetStanceKneel( titan.GetTitanSoul() )
-	titan.SetTitle( "[BOT]" + file.pilotnames.getrandom() )
+	thread RandomPilotName( titan )
 	UpdateEnemyMemoryFromTeammates( titan )
 }
 
@@ -1646,9 +1646,27 @@ void function NPCPrespawnWarpfallSequenceModded( string aiSettings, vector spawn
 	wait WARPFALL_FX_DELAY
 }
 
-void function RandomPilotName( pilot ) 
+void function RandomPilotName( pilot, int thing = 0, string startthing = "" ) 
 {
-pilot.SetTitle( "[BOT]" + file.pilotnames.getrandom() )
+string possiblename = "[AI]" + startthing + file.pilotnames.getrandom()
+array<string> unusablenames
+foreach( entity ai in GetNPCArray() )
+unusablenames.append( ai.GetTitle() )
+int timesdone = 0
+ while( timesdone <= 1000 )
+ {
+  timesdone += 1
+  if( unusablenames.contains( possiblename ) )
+  possiblename = "[AI]" + startthing + file.pilotnames.getrandom()
+  else
+  {
+  pilot.SetTitle( possiblename )
+  return
+  }
+ }
+ thing += 1
+ startthing = "(" + thing.tostring() + ")"
+ RandomPilotName( pilot, thing, startthing )
 }
 
 void function RandomPilotWeapon( entity pilot )
@@ -2450,10 +2468,17 @@ titan.EndSignal( "OnDestroy" )
 titan.EndSignal( "OnDeath" )
  while( true )
  {
-if ( titan.GetTitanSoul().IsDoomed() )
+if( !HasSoul( titan ) )
+return
+entity soul = titan.GetTitanSoul()
+if( !IsValid( soul ) )
+return
+if( !(soul.soul.seatedNpcPilot.isValid) )
+return
+if( soul.IsDoomed() )
 {
 wait 1
-while( titan.GetTitanSoul().IsDoomed() )
+while( soul.IsDoomed() )
 {
 wait 0.2
 
@@ -2462,10 +2487,6 @@ return
 
 if ( !IsAlive( titan ) )
 return
-
-    entity soul = titan.GetTitanSoul()
-	if ( !IsValid( soul ) )
-		return
                 float ejectRequiredDoomedHealth = 1250
 				int health = titan.GetHealth()
 				int shieldHealth = soul.GetShieldHealth()
