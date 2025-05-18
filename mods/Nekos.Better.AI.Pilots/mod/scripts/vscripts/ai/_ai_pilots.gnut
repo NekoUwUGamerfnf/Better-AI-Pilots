@@ -1289,7 +1289,7 @@ void function GuyHangsInPod( entity guy, entity pod, entity poddoor )
 	guy.EndSignal( "OnDestroy" )
 
 	OnThreadEnd(
-		function () : ( pod, poddor )
+		function () : ( pod, poddoor )
 		{
 			thread DestroyPod( pod, poddoor )
 		}
