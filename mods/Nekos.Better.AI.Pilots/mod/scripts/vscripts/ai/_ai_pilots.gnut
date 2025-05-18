@@ -939,18 +939,12 @@ void function SpawnPilotInTitan( int team, bool godmode = false, vector location
 	}
 	vector origin = < 0, 0, 0 >
 	vector angles = < 0, 0, 0 >
-    if( location == < 0, 0, 0 > || angle == < 0, 0, 0 > )
+    if( location == < 0, 0, 0 > && angle == < 0, 0, 0 > )
 	{
-	array<entity> droppodspawns = SpawnPoints_GetTitan()
-	bool isvaliddroppodspawn = false
-	foreach( entity droppod in droppodspawns )
-	{
-	if( IsValid( droppod ) )
-	isvaliddroppodspawn = true
-	}
-	if( isvaliddroppodspawn == false )
-	droppodspawns = SpawnPoints_GetPilot()
-	entity droppod = droppodspawns.getrandom()
+	entity droppod = GetSpawnpoint( team )
+	if( !IsValid( droppod ) )
+	return
+	droppod.s.lastUsedTime = Time()
 	origin = droppod.GetOrigin()
 	angle = droppod.GetAngles()
 	}
@@ -1041,18 +1035,12 @@ void function SpawnPilotWithTitan( int team, bool godmode = false, vector locati
 	}
 	vector pos = < 0, 0, 0 >
 	vector angles = < 0, 0, 0 >
-    if( location == < 0, 0, 0 > || angle == < 0, 0, 0 > )
+    if( location == < 0, 0, 0 > && angle == < 0, 0, 0 > )
 	{
-	array<entity> droppodspawns = SpawnPoints_GetTitan()
-	bool isvaliddroppodspawn = false
-	foreach( entity droppod in droppodspawns )
-	{
-	if( IsValid( droppod ) )
-	isvaliddroppodspawn = true
-	}
-	if( isvaliddroppodspawn == false )
-	droppodspawns = SpawnPoints_GetPilot()
-	entity droppod = droppodspawns.getrandom()
+	entity droppod = GetSpawnpoint( team )
+	if( !IsValid( droppod ) )
+	return
+	droppod.s.lastUsedTime = Time()
 	pos = droppod.GetOrigin()
 	angle = droppod.GetAngles()
 	}
@@ -1108,18 +1096,12 @@ void function SpawnPilot( int team, bool godmode = false, vector location = < 0,
 	}
 	vector pos = < 0, 0, 0 >
 	vector angles = < 0, 0, 0 >
-    if( location == < 0, 0, 0 > || angle == < 0, 0, 0 > )
+    if( location == < 0, 0, 0 > && angle == < 0, 0, 0 > )
 	{
-	array<entity> droppodspawns = SpawnPoints_GetTitan()
-	bool isvaliddroppodspawn = false
-	foreach( entity droppod in droppodspawns )
-	{
-	if( IsValid( droppod ) )
-	isvaliddroppodspawn = true
-	}
-	if( isvaliddroppodspawn == false )
-	droppodspawns = SpawnPoints_GetPilot()
-	entity droppod = droppodspawns.getrandom()
+	entity droppod = GetSpawnpoint( team )
+	if( !IsValid( droppod ) )
+	return
+	droppod.s.lastUsedTime = Time()
 	pos = droppod.GetOrigin()
 	angle = droppod.GetAngles()
 	}
@@ -1159,6 +1141,63 @@ void function SpawnPilot( int team, bool godmode = false, vector location = < 0,
 	
 	DropPodOpenDoorModded( pod, poddoor )
 	thread ActivateFireteamDropPodModded( pod, npcs, poddoor )
+}
+
+entity function GetSpawnpoint( int team )
+{
+ array<entity> spawns = SpawnPoints_GetTitan()
+ array<entity> betterspawns
+ if( spawns.len() <= 0 )
+ return null
+ foreach( entity spawnpoint in spawns )
+ if( IsSpawnpointValid( spawnpoint, team ) )
+ betterspawns.append( spawnpoint )
+ if( betterspawns.len() <= 0 )
+ return null
+ else
+ return betterspawns.getrandom()
+}
+
+bool function IsSpawnpointValid( entity spawnpoint, int team )
+{
+	if ( !spawnpoint.HasKey( "ignoreGamemode" ) || spawnpoint.HasKey( "ignoreGamemode" ) && spawnpoint.kv.ignoreGamemode == "0" ) // used by script-spawned spawnpoints
+	{
+		if ( GetSpawnpointGamemodeOverride() != "" )
+		{
+			string gamemodeKey = "gamemode_" + GetSpawnpointGamemodeOverride()
+			if ( spawnpoint.HasKey( gamemodeKey ) && ( spawnpoint.kv[ gamemodeKey ] == "0" || spawnpoint.kv[ gamemodeKey ] == "" ) )
+				return false
+		}
+		else if ( GameModeRemove( spawnpoint ) )
+			return false
+	}
+		
+	if ( !IsSpawnpointValidDrop( spawnpoint, team ) || Time() - spawnpoint.s.lastUsedTime <= 10.0 )
+		return false
+	
+	if ( SpawnPointInNoSpawnArea( spawnpoint.GetOrigin(), team ) )
+		return false
+
+	// Line of Sight Check, could use IsVisibleToEnemies but apparently that considers only players, not NPCs
+	array< entity > enemyTitans = GetTitanArrayOfEnemies( team )
+	if ( GetConVarBool( "spawnpoint_avoid_npc_titan_sight" ) )
+	{
+		foreach ( titan in enemyTitans )
+		{
+			if ( IsAlive( titan ) && titan.IsNPC() && titan.CanSee( spawnpoint ) )
+				return false
+		}
+	}
+	
+	return !spawnpoint.IsVisibleToEnemies( team )
+}
+
+bool function IsSpawnpointValidDrop( entity spawnpoint, int team )
+{
+	if ( spawnpoint.IsOccupied() || spawnpoint.s.inUse )
+		return false
+
+	return true
 }
 
 void function DropPodOpenDoorModded( entity pod, entity door )
