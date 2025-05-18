@@ -1288,6 +1288,13 @@ void function GuyHangsInPod( entity guy, entity pod, entity poddoor )
 	guy.EndSignal( "OnDeath" )
 	guy.EndSignal( "OnDestroy" )
 
+	OnThreadEnd(
+		function () : ( pod, poddor )
+		{
+			thread DestroyPod( pod, poddoor )
+		}
+	)
+
 	string exitAnim
 
 	guy.SetParent( pod, "ATTACH", false )
@@ -1301,7 +1308,6 @@ void function GuyHangsInPod( entity guy, entity pod, entity poddoor )
 
 	if ( exitAnimExists )
 		WaittillAnimDone( guy )
-	thread DestroyPod( pod, poddoor )
 	guy.Signal( "npc_deployed" )
 }
 
@@ -2532,17 +2538,24 @@ entity function NpcTitanBecomesPilot( entity titan )
 	pilot.kv.AccuracyMultiplier = accuracy
 	titan.kv.WeaponProficiency = eWeaponProficiency.AVERAGE
 	titan.kv.AccuracyMultiplier = 1.0
+	if( title != "" )
 	pilot.SetTitle( title )
+	else
+	RandomPilotName( pilot )
 	titan.SetTitle( pilot.GetTitle() + "'s Auto-Titan" )
 	if( file.pilotmodels.contains( model ) )
 	pilot.SetModel( model ) // this is a hack, trying to avoid having a model spawn option because its easy to abuse
 	else
-	pilot.SetModel( file.pilotmodels.getrandom() )
+	RandomPilotModel( pilot )
 	TakeWeaponsForArray( pilot, pilot.GetMainWeapons() )
+	bool gaveweapon = false
 	foreach( string newweapons in weapon )
 	{
 	pilot.GiveWeapon( newweapons )
+	gaveweapon = true
 	}
+	if( gaveweapon == false )
+	RandomPilotWeapon( pilot )
 	
 	// these setup should be moved to callbacks, don't handle in this file
 	//pilot.EnableNPCFlag( NPC_ALLOW_PATROL | NPC_ALLOW_INVESTIGATE | NPC_ALLOW_FLEE ) // this one is hardcoded, can change it through callbacks
