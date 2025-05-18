@@ -1172,7 +1172,7 @@ bool function IsSpawnpointValid( entity spawnpoint, int team )
 			return false
 	}
 		
-	if ( !spawnpoint.IsOccupied() || Time() - spawnpoint.s.lastUsedTime <= 10.0 )
+	if ( spawnpoint.IsOccupied() || Time() - spawnpoint.s.lastUsedTime <= 10.0 )
 		return false
 	
 	if ( SpawnPointInNoSpawnArea( spawnpoint.GetOrigin(), team ) )
@@ -2047,6 +2047,7 @@ void function PilotInTitanSet( entity titan )
 		case "legion":
 		                titan.SetAISettings( "npc_titan_ogre_minigun" )
 						titan.SetBehaviorSelector( "behavior_titan_ogre_minigun" )
+						titan.SetNPCMoveSpeedScale( 1.25 )
 			            break;
 		case "ion":
 		                titan.SetAISettings( "npc_titan_atlas_stickybomb" )
@@ -2094,6 +2095,7 @@ void function PilotNotInTitanSet( entity titan, bool firsttime = false )
                         break;
 		case "legion":
 		                titan.SetAISettings( "npc_titan_auto_ogre_minigun" )
+						titan.SetNPCMoveSpeedScale( 1.0 )
 			            break;
 		case "ion":
 		                titan.SetAISettings( "npc_titan_auto_atlas_stickybomb" )
