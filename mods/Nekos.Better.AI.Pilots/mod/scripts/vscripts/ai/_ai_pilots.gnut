@@ -944,7 +944,7 @@ void function SpawnPilotInTitan( int team, bool godmode = false, vector location
 	entity droppod = GetSpawnpoint( team )
 	if( !IsValid( droppod ) )
 	return
-	droppod.s.lastUsedTime = Time()
+	droppod.s.lastUsedTime <- Time()
 	origin = droppod.GetOrigin()
 	angle = droppod.GetAngles()
 	}
@@ -1040,7 +1040,7 @@ void function SpawnPilotWithTitan( int team, bool godmode = false, vector locati
 	entity droppod = GetSpawnpoint( team )
 	if( !IsValid( droppod ) )
 	return
-	droppod.s.lastUsedTime = Time()
+	droppod.s.lastUsedTime <- Time()
 	pos = droppod.GetOrigin()
 	angle = droppod.GetAngles()
 	}
@@ -1101,7 +1101,7 @@ void function SpawnPilot( int team, bool godmode = false, vector location = < 0,
 	entity droppod = GetSpawnpoint( team )
 	if( !IsValid( droppod ) )
 	return
-	droppod.s.lastUsedTime = Time()
+	droppod.s.lastUsedTime <- Time()
 	pos = droppod.GetOrigin()
 	angle = droppod.GetAngles()
 	}
@@ -1648,25 +1648,22 @@ void function NPCPrespawnWarpfallSequenceModded( string aiSettings, vector spawn
 
 void function RandomPilotName( pilot, int thing = 0, string startthing = "" ) 
 {
-string possiblename = "[AI]" + startthing + file.pilotnames.getrandom()
+array<string> possiblenames = file.pilotnames
 array<string> unusablenames
+array<string> usablenames
 foreach( entity ai in GetNPCArray() )
 unusablenames.append( ai.GetTitle() )
-int timesdone = 0
- while( timesdone <= 1000 )
+foreach( string name in possiblenames )
+if( !(unusablenames.contains( name )) )
+usablenames.append( name )
+ if( usablenames.len() <= 0 )
  {
-  timesdone += 1
-  if( unusablenames.contains( possiblename ) )
-  possiblename = "[AI]" + startthing + file.pilotnames.getrandom()
-  else
-  {
-  pilot.SetTitle( possiblename )
-  return
-  }
+  thing += 1
+  startthing = "(" + thing.tostring() + ")"
+  RandomPilotName( pilot, thing, startthing )
  }
- thing += 1
- startthing = "(" + thing.tostring() + ")"
- RandomPilotName( pilot, thing, startthing )
+ else
+ pilot.SetTitle( "[AI]" + startthing + usablenames.getrandom() )
 }
 
 void function RandomPilotWeapon( entity pilot )
