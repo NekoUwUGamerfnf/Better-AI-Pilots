@@ -191,18 +191,14 @@ function AiPilots_Init()
 	RegisterSignal( "StopCallTitanThink" )
 	RegisterSignal( "NpcTitanRespawnAvailableUpdated" )
 	AddSpawnCallback( "npc_pilot_elite", CaptainThink )
-	AddDamageFinalCallback( "player", PilotTitanExecution )
-	AddDamageFinalCallback( "npc_titan", PilotTitanExecution ) // titan execution :D
-	AddDamageFinalCallback( "npc_titan", NPCNOPAIN )
-	AddPostDamageCallback( "npc_titan", NPCNOPAIN )
-	AddDamageFinalCallback( "npc_pilot_elite", NPCNOPAIN )
-	AddPostDamageCallback( "npc_pilot_elite", NPCNOPAIN )
+	AddDamageByCallback( "npc_titan", PilotTitanExecution ) // titan execution :D
+	AddDamageCallback( "npc_titan", NPCNOPAIN )
+	AddDamageCallback( "npc_pilot_elite", NPCNOPAIN )
 	AddDamageCallbackSourceID( eDamageSourceId.auto_titan_melee, ApplyNormalMeleeIdToNPCTitan )
 	AddCallback_OnNPCKilled( NPCPilotGetsKill ) // Titanfall Based On Kills :D
     AddCallback_OnPlayerKilled( NPCPilotGetsKill )
-	AddDamageFinalCallback( "npc_pilot_elite", PilotDamageAdjustments )
-	AddDamageFinalCallback( "npc_titan", PilotTitanAutoOrDeathEjectHandle )
-	AddPostDamageCallback( "npc_titan", PilotTitanAutoOrDeathEjectHandle )
+	AddDamageCallback( "npc_pilot_elite", PilotDamageAdjustments )
+	AddDamageCallback( "npc_titan", PilotTitanAutoOrDeathEjectHandle )
 
 	level.onNpcPilotBecomesTitanCallbacks	<- []
 	level.onNpcTitanBecomesPilotCallbacks	<- []
@@ -631,6 +627,8 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 
 void function PilotTitanExecution_DamageEnemy( entity ent, var damageInfo )
 {
+if( HasSoul( ent ) && Time() - ent.GetTitanSoul().soul.doomedStartTime < TITAN_DOOMED_INVUL_TIME )
+return
 ent.SetInvulnerable()
 entity soul = ent.GetTitanSoul()
 if( !IsValid( soul ) )
