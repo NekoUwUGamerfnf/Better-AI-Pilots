@@ -90,7 +90,7 @@ $"models/humans/pilots/pilot_medium_stalker_f.mdl",
 $"models/humans/pilots/pilot_medium_reaper_m.mdl",
 $"models/humans/pilots/pilot_medium_reaper_f.mdl"
 ]
-pilotnames = [
+array<string> pilotnames = [
   "ShadowRider", "IronFist", "PhantomEcho", "SteelFury", "NovaViper",
   "IronSentinel", "GhostReaper", "DeathPulse", "SkyReaper", "DarkRaven",
   "FrostWarrior", "SkyForge", "WolfStriker", "ArcKnight", "RedTalon",
