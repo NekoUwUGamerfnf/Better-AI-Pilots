@@ -172,6 +172,7 @@ function AiPilots_Init()
     AddCallback_OnPlayerKilled( NPCPilotGetsKill )
 	AddDamageCallback( "npc_pilot_elite", PilotDamageAdjustments )
 	AddDamageCallback( "npc_titan", PilotTitanAutoOrDeathEjectHandle )
+	AddCallback_OnTitanDoomed( EjectWhenDoomed )
 
 	level.onNpcPilotBecomesTitanCallbacks	<- []
 	level.onNpcTitanBecomesPilotCallbacks	<- []
@@ -666,31 +667,32 @@ void function PilotTitanExecution_Wait( entity attacker, vector attackerStarting
 WaitFrame()
 if( godmode == false )
 {
-  while( attacker.IsInvulnerable() )
-  {
-   WaitFrame()
-   if( !IsValid( attacker ) )
-   return
-  }
+ while( attacker.IsInvulnerable() )
+ {
+    WaitFrame()
+    if( !IsValid( attacker ) )
+        return
+ }
  if( IsValid( attacker ) )
  {
- vector angles = attacker.GetAngles()
- // reset their x, z angles
- angles.x = attackerStartingAngles.x
- angles.z = attackerStartingAngles.z
- attacker.SetAngles( angles )
+    vector angles = attacker.GetAngles()
+    // reset their x, z angles
+    angles.x = attackerStartingAngles.x
+    angles.z = attackerStartingAngles.z
+    attacker.SetAngles( angles )
  }
 }
 if( godmode == true )
 {
- WaittillAnimDone( attacker )
+ while( attacker.Anim_IsActive() )
+    WaitFrame()
  if( IsValid( attacker ) )
  {
- vector angles = attacker.GetAngles()
- // reset their x, z angles
- angles.x = attackerStartingAngles.x
- angles.z = attackerStartingAngles.z
- attacker.SetAngles( angles )
+    vector angles = attacker.GetAngles()
+    // reset their x, z angles
+    angles.x = attackerStartingAngles.x
+    angles.z = attackerStartingAngles.z
+    attacker.SetAngles( angles )
  }
 }
 }
@@ -2015,7 +2017,6 @@ void function PilotInTitanSet( entity titan )
 {
     if( IsValid( titan ) )
 	{
-	thread EjectWhenDoomed( titan )
 	thread GiveTitanSmokeEveryThirtySeconds( titan )
 	thread EmbarkedNPCTitanRodeoCounter( titan )
 	string attackerType = GetTitanCharacterName( titan )
@@ -2429,61 +2430,54 @@ void function NpcPilotBecomesTitan( entity pilot, entity titan )
 	pilot.Destroy()
 }
 
-void function EjectWhenDoomed( entity titan )
+void function EjectWhenDoomed( entity titan, var damageInfo )
 {
+thread EjectWhenDoomed_thread( titan )
+}
+
+void function EjectWhenDoomed_thread( entity titan )
+{
+if ( titan.IsPlayer() || !titan.IsTitan() )
+    return
 bool shouldEjectTitan = false
 titan.EndSignal( "OnDestroy" )
 titan.EndSignal( "OnDeath" )
- while( true )
- {
 if( !HasSoul( titan ) )
-return
+    return
 entity soul = titan.GetTitanSoul()
 if( !IsValid( soul ) )
-return
-if( !(soul.soul.seatedNpcPilot.isValid) )
-return
-if( soul.IsDoomed() )
-{
-wait 1
-while( soul.IsDoomed() )
-{
-wait 0.2
-
-if( !IsValid( titan ) )
-return
-
-if ( !IsAlive( titan ) )
-return
-                float ejectRequiredDoomedHealth = 1250
-				int health = titan.GetHealth()
-				int shieldHealth = soul.GetShieldHealth()
-				int maxHealth = titan.GetMaxHealth()
-				int ShieldHealth = health + shieldHealth
-				entity enemy = titan.GetEnemy()
-				if ( ShieldHealth <= ejectRequiredDoomedHealth )
-					shouldEjectTitan = true 
-				if ( IsAlive( enemy ) && enemy.IsTitan() )
-				{
-					bool horizontallyClose = Distance2D( titan.GetOrigin(), enemy.GetOrigin() ) < 630
-					// combating an enemy titan who can execute us at close range, but we can't execute them! way too dangerous, we eject
-					// needs to handle ejecting case here, so we don't waste our health
-					bool enemyIsEjecting = HasSoul( enemy ) && enemy.GetTitanSoul().IsEjecting()
-					if ( !enemyIsEjecting && horizontallyClose && !enemy.ContextAction_IsMeleeExecution() )
-						shouldEjectTitan = true
-				}
-				if ( shouldEjectTitan )
-				{
-				    if ( !titan.IsInvulnerable() )
-					{
-					thread TitanEjectPlayerForNPCs( titan )
-					return
-					}
-				}
-}
-}
-WaitFrame()
- }
+    return
+soul.EndSignal( "OnDestroy" )
+soul.EndSignal( "OnDeath" )
+wait 1.0 
+   while( soul.IsDoomed() && soul.soul.seatedNpcPilot.isValid )
+   {
+	    if ( !(titan in file.autoeject && file.autoeject[titan] == true) )
+	        wait 0.2
+        float ejectRequiredDoomedHealth = 1250
+		int health = titan.GetHealth()
+		int shieldHealth = soul.GetShieldHealth()
+		int maxHealth = titan.GetMaxHealth()
+		int ShieldHealth = health + shieldHealth
+		entity enemy = titan.GetEnemy()
+		if ( ShieldHealth <= ejectRequiredDoomedHealth )
+			shouldEjectTitan = true 
+		if ( IsAlive( enemy ) && enemy.IsTitan() )
+		{
+			bool horizontallyClose = Distance2D( titan.GetOrigin(), enemy.GetOrigin() ) < 630
+			bool enemyIsEjecting = HasSoul( enemy ) && enemy.GetTitanSoul().IsEjecting()
+			if ( !enemyIsEjecting && horizontallyClose && !enemy.ContextAction_IsMeleeExecution() )
+				shouldEjectTitan = true
+		}
+		if ( shouldEjectTitan || (titan in file.autoeject && file.autoeject[titan] == true) )
+		{
+			if ( !titan.IsInvulnerable() || (titan in file.autoeject && file.autoeject[titan] == true) )
+			{
+				thread TitanEjectPlayerForNPCs( titan )
+				return
+			}
+		}
+   }
 }
 
 entity function NpcTitanBecomesPilot( entity titan )
