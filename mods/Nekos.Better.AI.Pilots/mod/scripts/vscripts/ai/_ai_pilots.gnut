@@ -591,7 +591,7 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 					vector attackerStartingAngles = attacker.GetAngles()
 					PilotTitanExecution_DamageEnemy( ent, damageInfo )
 					DamageInfo_SetDamage( damageInfo, 0 )
-					thread PilotTitanExecution_Wait( attacker, attackerStartingAngles, attacker.IsInvulnerable() )
+					thread PilotTitanExecution_Wait( attacker, attackerStartingAngles )
 					waitthread PlayerTriesSyncedMelee( attacker, ent )
 				}
 			}
@@ -662,39 +662,18 @@ int function GetTitanValidHealthFromDamageInfo( entity titan, var damageInfo )
     return healthShield
 }
 
-void function PilotTitanExecution_Wait( entity attacker, vector attackerStartingAngles, bool godmode )
+void function PilotTitanExecution_Wait( entity attacker, vector attackerStartingAngles )
 {
-WaitFrame()
-if( godmode == false )
-{
- while( attacker.IsInvulnerable() )
- {
+    attacker.EndSignal( "OnDestroy" )
+    attacker.EndSignal( "OnDeath" )
     WaitFrame()
-    if( !IsValid( attacker ) )
-        return
- }
- if( IsValid( attacker ) )
- {
+    while( attacker.Anim_IsActive() )
+        WaitFrame()
     vector angles = attacker.GetAngles()
     // reset their x, z angles
     angles.x = attackerStartingAngles.x
     angles.z = attackerStartingAngles.z
     attacker.SetAngles( angles )
- }
-}
-if( godmode == true )
-{
- while( attacker.Anim_IsActive() )
-    WaitFrame()
- if( IsValid( attacker ) )
- {
-    vector angles = attacker.GetAngles()
-    // reset their x, z angles
-    angles.x = attackerStartingAngles.x
-    angles.z = attackerStartingAngles.z
-    attacker.SetAngles( angles )
- }
-}
 }
 
 function NpcPilotCallTitanThink( entity pilot )
