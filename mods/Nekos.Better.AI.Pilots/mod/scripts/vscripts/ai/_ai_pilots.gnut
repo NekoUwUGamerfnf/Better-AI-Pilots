@@ -70,7 +70,6 @@ array<string> pilotweapons = [
 "mp_weapon_epg",
 "mp_weapon_smr",
 "mp_weapon_lmg",
-"mp_weapon_g2",
 "mp_weapon_rspn101",
 "mp_weapon_car",
 "mp_weapon_hemlok",
