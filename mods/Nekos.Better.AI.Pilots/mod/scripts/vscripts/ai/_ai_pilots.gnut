@@ -1809,7 +1809,7 @@ void function MonitorTitanCore( entity npc )
 	
 	while( true )
 	{
-	    SoulTitanCore_SetNextAvailableTime( soul, 0.5 )
+	    SoulTitanCore_SetNextAvailableTime( soul, 0.85 )
 		npc.WaitSignal( "CoreBegin" )
 		npc.WaitSignal( "CoreEnd" )
 	}
