@@ -282,7 +282,7 @@ void function threadCaptainThink( entity npc )
 	{
 	thread RandomPilotWeapon( npc )
 	thread RandomPilotName( npc )
-	npc.kv.AccuracyMultiplier = 10.0
+	npc.kv.AccuracyMultiplier = 25
 	npc.kv.WeaponProficiency = eWeaponProficiency.PERFECT
 	thread PilotMiniMap( npc )
 	thread PilotSpeedFlagsHPAndBehavior( npc )
@@ -909,7 +909,7 @@ void function SpawnPilotInTitan( int team, bool godmode = false, vector location
 	pilot.SetInvulnerable()
 	thread RandomPilotWeapon( pilot )
 	thread RandomPilotName( pilot )
-	pilot.kv.AccuracyMultiplier = 10.0
+	pilot.kv.AccuracyMultiplier = 25
 	pilot.kv.WeaponProficiency = eWeaponProficiency.PERFECT
 	thread RandomPilotModel( pilot )
 	pilot.EnableNPCFlag( NPC_IGNORE_ALL )
@@ -1011,7 +1011,7 @@ void function SpawnPilotWithTitan( int team, bool godmode = false, vector locati
 		SetTeam( entitynpc, team )
 	    thread RandomPilotWeapon( entitynpc )
 	    thread RandomPilotName( entitynpc )
-	    entitynpc.kv.AccuracyMultiplier = 10.0
+	    entitynpc.kv.AccuracyMultiplier = 25
 	    entitynpc.kv.WeaponProficiency = eWeaponProficiency.PERFECT
 	    thread PilotSpeedFlagsHPAndBehavior( entitynpc )
 	    thread RandomPilotModel( entitynpc )
@@ -1075,7 +1075,7 @@ void function SpawnPilot( int team, bool godmode = false, vector location = < 0,
 		SetTeam( entitynpc, team )
 	    thread RandomPilotWeapon( entitynpc )
 	    thread RandomPilotName( entitynpc )
-	    entitynpc.kv.AccuracyMultiplier = 10.0
+	    entitynpc.kv.AccuracyMultiplier = 25
 	    entitynpc.kv.WeaponProficiency = eWeaponProficiency.PERFECT
 	    thread PilotMiniMap( entitynpc )
 	    thread PilotSpeedFlagsHPAndBehavior( entitynpc )
