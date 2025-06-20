@@ -373,6 +373,8 @@ SetTeam( pilotminimap, npc.GetTeam() )
 NPC_NoTarget( pilotminimap )
 pilotminimap.EnableNPCFlag( NPC_IGNORE_ALL )
 pilotminimap.StopPhysics()
+pilotminimap.Freeze()
+pilotminimap.SetModel( $"models/dev/empty_model.mdl" )
 return pilotminimap
 }
 
