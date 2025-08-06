@@ -219,7 +219,7 @@ bool function CodeCallback_IsValidMeleeExecutionTarget( entity attacker, entity 
 			return false
 	}
 
-	#if !SERVER_HAS_KARMA_AIRBORNE_EXECUTIONS
+	#if !BETTER_AI_PILOTS_HAS_KARMA_AIRBORNE_EXECUTIONS
 	if ( !attacker.IsOnGround() && attacker.IsHuman() )
 		return false
 	#endif
@@ -270,7 +270,7 @@ bool function CodeCallback_IsValidMeleeExecutionTarget( entity attacker, entity 
 	// npc execution case
 	if ( attacker.IsPlayer() )
 	{
-	    #if !SERVER_HAS_KARMA_AIRBORNE_EXECUTIONS
+	    #if !BETTER_AI_PILOTS_HAS_KARMA_AIRBORNE_EXECUTIONS
 		if ( !CheckVerticallyCloseEnough( attacker, target ) )
 			return false
 
@@ -287,7 +287,7 @@ bool function CodeCallback_IsValidMeleeExecutionTarget( entity attacker, entity 
 	{
 		if ( target.IsHuman() )
 		{
-		    #if SERVER_HAS_KARMA_AIRBORNE_EXECUTIONS
+		    #if BETTER_AI_PILOTS_HAS_KARMA_AIRBORNE_EXECUTIONS
 			if ( target.IsWallRunning() )
 				return false
 			#endif
@@ -295,7 +295,7 @@ bool function CodeCallback_IsValidMeleeExecutionTarget( entity attacker, entity 
 			if ( target.IsTraversing() )
 				return false
 
-			#if SERVER_HAS_KARMA_AIRBORNE_EXECUTIONS
+			#if BETTER_AI_PILOTS_HAS_KARMA_AIRBORNE_EXECUTIONS
 			if ( !target.IsOnGround() ) //disallow mid-air necksnaps. Can't really do that for Titan executions since dash puts them in mid air... will have visual glitches unfortunately.
 				return false
 
@@ -1052,6 +1052,8 @@ string function GetVictimSyncedMeleeTargetType( entity ent )
 SyncedMeleeChooser ornull function GetSyncedMeleeChooserForPlayerVsTarget( entity attacker, entity target )
 {
 	string attackerType = GetAttackerSyncedMelee( attacker )
+	if ( IsPilotElite( attacker ) )
+	    attackerType = "human"
 	string targetType = GetVictimSyncedMeleeTargetType( target )
 
 	if ( !( attackerType in file.syncedMeleeChoosers ) )

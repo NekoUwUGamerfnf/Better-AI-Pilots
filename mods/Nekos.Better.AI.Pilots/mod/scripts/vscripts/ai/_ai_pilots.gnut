@@ -62,6 +62,7 @@ table<entity, int> smokecount // Titan Smoke Count
 table<entity, bool> autoeject // Ejects The Titan On Doom State
 table<entity, bool> deatheject // Ejects The Titan On Death
 table<entity, bool> titanisbeingembarked
+table<entity, bool> isbetteraipilotsentity
 array<string> pilotweapons = [
 "mp_weapon_rspn101_og",
 "mp_weapon_r97",
@@ -164,6 +165,7 @@ function AiPilots_Init()
 	RegisterSignal( "NpcTitanRespawnAvailableUpdated" )
 	AddSpawnCallback( "npc_pilot_elite", CaptainThink )
 	AddDamageByCallback( "npc_titan", PilotTitanExecution ) // titan execution :D
+	AddDamageByCallback( "npc_pilot_elite", PilotExecution ) // pilot execution :D
 	AddDamageCallback( "npc_titan", NPCNOPAIN )
 	AddDamageCallback( "npc_pilot_elite", NPCNOPAIN )
 	AddDamageCallbackSourceID( eDamageSourceId.auto_titan_melee, ApplyNormalMeleeIdToNPCTitan )
@@ -172,6 +174,15 @@ function AiPilots_Init()
 	AddDamageCallback( "npc_pilot_elite", PilotDamageAdjustments )
 	AddDamageCallback( "npc_titan", PilotTitanAutoOrDeathEjectHandle )
 	AddCallback_OnTitanDoomed( EjectWhenDoomed )
+    try
+    {
+        if ( !IsValid( GetConVarInt( "ns_fd_min_numplayers_to_start" ) ) )
+            AddCallback_OnNPCKilled( HandleNPCScoreEvent )
+    }
+    catch( error )
+    {
+        AddCallback_OnNPCKilled( HandleNPCScoreEvent )
+    }
 
 	level.onNpcPilotBecomesTitanCallbacks	<- []
 	level.onNpcTitanBecomesPilotCallbacks	<- []
@@ -237,6 +248,72 @@ function NpcPilotStopCallTitanThink( pilot )
 	pilot.Signal( "StopCallTitanThink" )
 }
 
+bool function Is_BetterAiPilots_Entity( entity thing )
+{
+	if ( thing in file.isbetteraipilotsentity && file.isbetteraipilotsentity[ thing ] )
+	    return true
+	
+	return false
+}
+
+void function HandleNPCScoreEvent( entity ent, entity attacker, var damageInfo )
+{
+    if ( !ent.IsTitan() || !Is_BetterAiPilots_Entity( ent ) )
+        return
+
+	int attackerEHandle = ent.GetEncodedEHandle()
+    if ( IsValid( attacker ) && ( attacker.IsPlayer() || attacker.IsNPC() ) )
+		attackerEHandle = attacker.GetEncodedEHandle()
+
+	int entEHandle = ent.GetEncodedEHandle()
+	int scriptDamageType = DamageInfo_GetCustomDamageType( damageInfo )
+	int damageSourceId = DamageInfo_GetDamageSourceIdentifier( damageInfo )
+
+	if ( scriptDamageType & DF_VORTEX_REFIRE )
+		damageSourceId = eDamageSourceId.mp_titanweapon_vortex_shield
+
+	foreach ( player in GetPlayerArray() )
+		Remote_CallFunction_NonReplay( player, "ServerCallback_OnTitanKilled", attackerEHandle, entEHandle, scriptDamageType, damageSourceId )
+}
+
+void function NPCPilotEjectingAnimation( entity pilot )
+{
+	pilot.EndSignal( "OnDestroy" )
+	pilot.EndSignal( "OnDeath" )
+	
+	if ( !pilot.ContextAction_IsBusy() )
+		pilot.ContextAction_SetBusy()
+
+	pilot.Anim_ScriptedPlayActivityByName( "ACT_FALL", true, 0.2 )
+	pilot.SetNPCPriorityOverride( 10 )
+
+	OnThreadEnd
+	(
+		function(): ( pilot )
+		{
+			if ( IsValid( pilot ) )
+			{
+				if ( pilot.ContextAction_IsBusy() )
+					pilot.ContextAction_ClearBusy()
+				
+				pilot.Anim_Stop()
+				if ( IsAlive( pilot ) )
+					pilot.ClearNPCPriorityOverride()
+			}
+		}
+	)
+
+	float lastAnimPlayedTime = -1
+	float failSafeTime = Time() + 6.0
+	while( Time() < failSafeTime )
+	{
+		if ( pilot.IsOnGround() && pilot.GetVelocity().z <= 0 )
+			break
+		
+		WaitFrame()
+	}
+}
+
 /************************************************************************************************\
 
 ########  #### ##        #######  ########       ######## ##     ## #### ##    ## ##    ##
@@ -280,6 +357,7 @@ void function threadCaptainThink( entity npc )
 	WaitFrame() //wait a frame for things like petTitan and nextTitanRespawnAvailable to have a chance to be set from custom scripts
 	if( npc.GetModelName() == $"models/humans/pilots/sp_medium_reaper_m.mdl" )
 	{
+    file.isbetteraipilotsentity[ npc ] <- true
 	thread RandomPilotWeapon( npc )
 	thread RandomPilotName( npc )
 	npc.kv.AccuracyMultiplier = 25
@@ -349,6 +427,7 @@ npc.SetMaxHealth( 1500 )
 npc.SetHealth( npc.GetMaxHealth() )
 npc.SetBehaviorSelector( "behavior_sp_soldier" )
 npc.SetEnemyChangeCallback( OnNPCPilotEnemyChange )
+Highlight_SetEnemyHighlight( npc, "enemy_player" )
 }
 
 void function PilotMiniMap( entity npc )
@@ -361,6 +440,7 @@ entity function createpilotminimap( entity npc )
 {
 entity pilotminimap = CreateEntity( "npc_spectre" )
 DispatchSpawn( pilotminimap )
+file.isbetteraipilotsentity[ pilotminimap ] <- true
 TakeWeaponsForArray( pilotminimap, pilotminimap.GetMainWeapons() )
 pilotminimap.kv.VisibilityFlags = ENTITY_VISIBLE_TO_NOBODY
 pilotminimap.Hide()
@@ -428,6 +508,9 @@ if( !attacker.IsNPC() )
 if( !attacker.IsTitan() )
     return
 
+if ( !Is_BetterAiPilots_Entity( attacker ) )
+    return
+
 if ( GetTitanCharacterName( attacker ) == "ronin" && attacker.GetTitanSoul().soul.seatedNpcPilot.isValid )
 {
  entity meleeWeapon = attacker.GetMeleeWeapon()
@@ -464,6 +547,8 @@ if( !attacker.IsNPC() )
 return
 if( attacker.GetClassName() != "npc_pilot_elite" )
 return
+if ( !Is_BetterAiPilots_Entity( attacker ) )
+    return
 string entclass = ent.GetClassName()
 bool PlayerWasTitan = false
 if( ent.IsPlayer() && ent.IsTitan() )
@@ -496,7 +581,7 @@ file.titanready[ attacker ] = newpointscount
 
 void function PilotDamageAdjustments( entity pilot, var damageInfo )
 {	
-	if ( IsInstantDeath( damageInfo ) || DamageInfo_GetForceKill( damageInfo ) ) // force kill damage( trigger_hurt, executions ) shouldn't be handled
+	if ( !Is_BetterAiPilots_Entity( pilot ) || IsInstantDeath( damageInfo ) || DamageInfo_GetForceKill( damageInfo ) ) // force kill damage( trigger_hurt, executions ) shouldn't be handled
 		return
 
 	int damageSourceID = DamageInfo_GetDamageSourceIdentifier( damageInfo )
@@ -519,7 +604,7 @@ void function PilotDamageAdjustments( entity pilot, var damageInfo )
 
 void function PilotTitanAutoOrDeathEjectHandle( entity titan, var damageInfo )
 {
-	if ( IsInstantDeath( damageInfo ) || DamageInfo_GetForceKill( damageInfo ) )	
+	if ( !Is_BetterAiPilots_Entity( titan ) || IsInstantDeath( damageInfo ) || DamageInfo_GetForceKill( damageInfo ) )	
 		return
 
 	if ( titan.ContextAction_IsBusy() )
@@ -580,7 +665,7 @@ void function PilotTitanExecution_thread( entity ent, var damageInfo )
 		return
 
 	entity soul = ent.GetTitanSoul()
-	if( attacker.IsNPC() && attacker.IsTitan() )
+	if( attacker.IsNPC() && attacker.IsTitan() && Is_BetterAiPilots_Entity( attacker ) )
 	{
 		if( IsValid( soul ) && ( damageType & DF_MELEE ) )
 		{
@@ -627,6 +712,36 @@ titanhealthdamaged = 1
 ent.SetHealth( titanhealthdamaged )
 ent.ClearInvulnerable()
 }
+
+void function PilotExecution( entity ent, var damageInfo )
+{
+    thread PilotExecution_thread( ent, damageInfo )
+}
+
+void function PilotExecution_thread( entity ent, var damageInfo )
+{
+    int damageType = DamageInfo_GetCustomDamageType( damageInfo )
+	entity attacker = DamageInfo_GetAttacker( damageInfo )
+
+	if ( !IsAlive( ent ) || !attacker || ent.GetTeam() == attacker.GetTeam() || attacker == ent || ent.IsTitan() || ent.IsInvulnerable() )
+	    return
+
+	if ( attacker.IsNPC() && Is_BetterAiPilots_Entity( attacker ) )
+	{
+		if ( ( damageType & DF_MELEE ) )
+		{
+			if ( CodeCallback_IsValidMeleeExecutionTarget( attacker, ent ) && !ent.Anim_IsActive() )
+			{
+				if ( !(ent.IsPlayer() && PlayerCanSee( ent, attacker, true, 75 ) || ent.IsNPC() && ent.CanSee( attacker )) )
+				{
+					DamageInfo_SetDamage( damageInfo, 0 )
+					waitthread PlayerTriesSyncedMelee( attacker, ent )
+				}
+			}
+		}
+	}
+}
+
 
 bool function TitanCanSurviveDamage( entity titan, var damageInfo )
 {
@@ -947,6 +1062,7 @@ void function SpawnPilotInTitan( int team, bool godmode = false, vector location
 	entity titan = CreateNPCTitan( setFile, team, origin, angles )
 	SetSpawnOption_AISettings( titan, titanSettings )
 	DispatchSpawn( titan )
+	file.isbetteraipilotsentity[ titan ] <- true
 	thread NpcPilotBecomesTitan( pilot, titan )
 
 	//call it in
@@ -1010,6 +1126,7 @@ void function SpawnPilotWithTitan( int team, bool godmode = false, vector locati
 		entity entitynpc = CreateEntity( "npc_pilot_elite" )
 		entitynpc.SetOrigin( pos )
 		DispatchSpawn( entitynpc )
+		file.isbetteraipilotsentity[ entitynpc ] <- true
 		SetTeam( entitynpc, team )
 	    thread RandomPilotWeapon( entitynpc )
 	    thread RandomPilotName( entitynpc )
@@ -1074,6 +1191,7 @@ void function SpawnPilot( int team, bool godmode = false, vector location = < 0,
 		entity entitynpc = CreateEntity( "npc_pilot_elite" )
 		entitynpc.SetOrigin( pos )
 		DispatchSpawn( entitynpc )
+		file.isbetteraipilotsentity[ entitynpc ] <- true
 		SetTeam( entitynpc, team )
 	    thread RandomPilotWeapon( entitynpc )
 	    thread RandomPilotName( entitynpc )
@@ -1356,6 +1474,7 @@ entity function NpcPilotCallsInTitan( entity pilot, vector origin, vector angles
 	entity titan = CreateNPCTitan( setFile, pilotteam, origin, angles )
 	SetSpawnOption_AISettings( titan, titanSettings )
 	DispatchSpawn( titan )
+	file.isbetteraipilotsentity[ titan ] <- true
 	if( IsValid( pilot ) )
 	{
 	if( IsAlive( pilot ) )
@@ -2179,7 +2298,7 @@ void function AutoTitanLoadout( entity titan )
 						 GivePassive( soul, ePassives.PAS_VANGUARD_COREMETER )
 						 soul.soul.titanLoadout.titanExecution = "execution_vanguard_kit"
 						 }
-						 if ( SoulHasPassive( soul, ePassives.PAS_VANGUARD_COREMETER ) && RandomInt( 100 ) < 50 )
+						 if ( !SoulHasPassive( soul, ePassives.PAS_VANGUARD_COREMETER ) && RandomInt( 100 ) < 50 )
 						 GivePassive( soul, ePassives.PAS_VANGUARD_DOOM )
 						}
                         break;
@@ -2417,7 +2536,7 @@ thread EjectWhenDoomed_thread( titan )
 
 void function EjectWhenDoomed_thread( entity titan )
 {
-if ( titan.IsPlayer() || !titan.IsTitan() )
+if ( !Is_BetterAiPilots_Entity( titan ) || titan.IsPlayer() || !titan.IsTitan() )
     return
 bool shouldEjectTitan = false
 titan.EndSignal( "OnDestroy" )
@@ -2429,8 +2548,9 @@ if( !IsValid( soul ) )
     return
 soul.EndSignal( "OnDestroy" )
 soul.EndSignal( "OnDeath" )
-wait 1.0 
-   while( soul.IsDoomed() && soul.soul.seatedNpcPilot.isValid )
+if ( !(titan in file.autoeject && file.autoeject[titan]) )
+    wait 1.0 
+   while( soul.IsDoomed() )
    {
 	    if ( !(titan in file.autoeject && file.autoeject[titan] == true) )
 	        wait 0.2
@@ -2449,7 +2569,7 @@ wait 1.0
 			if ( !enemyIsEjecting && horizontallyClose && !enemy.ContextAction_IsMeleeExecution() )
 				shouldEjectTitan = true
 		}
-		if ( shouldEjectTitan || (titan in file.autoeject && file.autoeject[titan] == true) )
+		if ( soul.soul.seatedNpcPilot.isValid && (shouldEjectTitan || (titan in file.autoeject && file.autoeject[titan] == true)) )
 		{
 			if ( !titan.IsInvulnerable() || (titan in file.autoeject && file.autoeject[titan] == true) )
 			{
@@ -2487,6 +2607,7 @@ entity function NpcTitanBecomesPilot( entity titan )
 	// modified here: to make npc spawn longer hardcoded
 	//SetSpawnOption_Weapon( pilot, weapon )
 	DispatchSpawn( pilot )
+	file.isbetteraipilotsentity[ pilot ] <- true
 	thread PilotMiniMap( pilot )
 	thread PilotSpeedFlagsHPAndBehavior( pilot )
 	thread NpcPilotCallTitanThink( pilot )
@@ -3528,8 +3649,11 @@ function TitanEjectPlayerForNPCs( entity ejectTitan, bool instant = false ) //TO
 		{
 		e.npcPilot = NpcTitanBecomesPilot( ejectTitan )
 		entity npcPilot = expect entity( e.npcPilot )
-		if ( IsAlive( npcPilot ) )
-			npcPilot.SetInvulnerable()
+		    if ( IsAlive( npcPilot ) )
+			{
+			    npcPilot.SetInvulnerable()
+				thread NPCPilotEjectingAnimation( npcPilot )
+			}
 		}
 
 	vector titanOrigin = titan.GetOrigin()
