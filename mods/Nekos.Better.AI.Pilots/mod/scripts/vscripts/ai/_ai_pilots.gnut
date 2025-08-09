@@ -166,6 +166,7 @@ function AiPilots_Init()
 	AddSpawnCallback( "npc_pilot_elite", CaptainThink )
 	AddDamageByCallback( "npc_titan", PilotTitanExecution ) // titan execution :D
 	AddDamageByCallback( "npc_pilot_elite", PilotExecution ) // pilot execution :D
+	AddDamageByCallback( "npc_pilot_elite", PilotMeleeDamage ) // pilot execution :D
 	AddDamageCallback( "npc_titan", NPCNOPAIN )
 	AddDamageCallback( "npc_pilot_elite", NPCNOPAIN )
 	AddDamageCallbackSourceID( eDamageSourceId.auto_titan_melee, ApplyNormalMeleeIdToNPCTitan )
@@ -742,6 +743,14 @@ void function PilotExecution_thread( entity ent, var damageInfo )
 	}
 }
 
+void function PilotMeleeDamage( entity ent, var damageInfo )
+{
+	if ( !Is_BetterAiPilots_Entity( DamageInfo_GetAttacker( damageInfo ) ) )
+		return
+
+	if ( ( DamageInfo_GetCustomDamageType( damageInfo ) & DF_MELEE ) && DamageInfo_GetDamage( damageInfo ) < 100 )
+		DamageInfo_SetDamage( damageInfo, 100 )
+}
 
 bool function TitanCanSurviveDamage( entity titan, var damageInfo )
 {
@@ -1735,7 +1744,7 @@ usablenames.append( name )
   RandomPilotName( pilot, thing, startthing )
  }
  else
- pilot.SetTitle( "[AI]" + startthing + usablenames.getrandom() )
+ pilot.SetTitle( "[AI] " + startthing + usablenames.getrandom() )
 }
 
 void function RandomPilotWeapon( entity pilot )

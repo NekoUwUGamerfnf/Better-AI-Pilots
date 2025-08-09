@@ -28,9 +28,9 @@ npc_pilot_elite
 	Health							250 [$mp]
 
 	// modified: make npc pilots no longer able to be knocked down
-	PainOnHeavyDamageThreshold		420 // vanilla uses 250, first version uses 99999
-	breakOutOfPainDamageThreshold	250 // vanilla uses 150, first version uses 99999
-	PainOnRepeatDamageThreshold		1000 // vanilla uses 300, first version uses 99999
+	PainOnHeavyDamageThreshold		250 // vanilla uses 250, first version uses 99999
+	breakOutOfPainDamageThreshold	150 // vanilla uses 150, first version uses 99999
+	PainOnRepeatDamageThreshold		300 // vanilla uses 300, first version uses 99999
 
 	AimAngularSpeed					10
 
@@ -91,8 +91,8 @@ npc_pilot_elite
 
 	faceEnemyWhileMovingDist		1000
 
-	MeleeDamageMin					100 // vanilla uses 70, too high for a character...
-	MeleeDamageMax					100 // vanilla uses 80, too high for a character...
+	MeleeDamageMin					70 // vanilla uses 70, too high for a character...
+	MeleeDamageMax					80 // vanilla uses 80, too high for a character...
 	MeleeDamageRadius				60 // was 32, match MeleeRange or they can't hit standing targets, once used 90 but it can't match their model
 	MeleeRange						40 // was 80, which can't match their model, once used 60 but it can't match their model
 	MeleeDamageForce				15000
