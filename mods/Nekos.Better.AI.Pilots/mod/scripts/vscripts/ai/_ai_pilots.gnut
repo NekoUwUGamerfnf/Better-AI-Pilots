@@ -166,7 +166,7 @@ function AiPilots_Init()
 	AddSpawnCallback( "npc_pilot_elite", CaptainThink )
 	AddDamageByCallback( "npc_titan", PilotTitanExecution ) // titan execution :D
 	AddDamageByCallback( "npc_pilot_elite", PilotExecution ) // pilot execution :D
-	AddDamageByCallback( "npc_pilot_elite", PilotMeleeDamage ) // pilot execution :D
+	AddDamageByCallback( "npc_pilot_elite", PilotMeleeDamage )
 	AddDamageCallback( "npc_titan", NPCNOPAIN )
 	AddDamageCallback( "npc_pilot_elite", NPCNOPAIN )
 	AddDamageCallbackSourceID( eDamageSourceId.auto_titan_melee, ApplyNormalMeleeIdToNPCTitan )
